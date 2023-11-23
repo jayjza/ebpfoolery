@@ -1,0 +1,5 @@
+#! /usr/bin/env python
+import click
+
+from ebpforgery import forge_ippers
+
