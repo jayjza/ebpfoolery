@@ -1,0 +1,52 @@
+#!/bin/bash
+DIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
+
+function usage() {
+    echo 'ebpforged -p <PERSONALITY> -i <NETWORK_INTERFACE>'
+    echo -e "\t<PERSONALITY>\t-\tIp personality you would like to fake"
+    echo -e "\t<NETWORK_INTERFACE>\t-\tNetwork interface you would like to use"
+    exit 1
+}
+
+
+function sudo() {
+  if [ "$EUID" -ne 0 ]; then
+    $(which sudo) $*
+  else
+    # Strip `sudo -E` before running the remaining command
+    ${*:2}
+  fi
+}
+
+PERSONALITY=""
+INTERFACE=""
+if [[ $# -lt 1 ]];then
+	usage
+else
+	while getopts "ap:i:" opt; do
+	  case $opt in
+        h)
+          usage
+          ;;
+        p)
+          PERSONALITY="$OPTARG"
+          ;;
+        i)
+          INTERFACE="$OPTARG"
+          ;;
+	    \?)
+	      echo "Invalid option: -$OPTARG" >&2
+          usage
+	      ;;
+	  esac
+	done
+fi
+
+if [[ "a$PERSONALITY" == "a" || "a$INTERFACE" == "a" ]]; then
+  echo "Please supply both a personality and a network interface"
+  usage
+fi
+
+sudo -E python3 ebpforge forge $PERSONALITY $INTERFACE
+# if [ "${cmd}" == "--ippers" ]; then
+#     sudo -E "${DIR}/twistd" -y "${DIR}/opencanary.tac" --pidfile "${PIDFILE}" --syslog --prefix=opencanaryd

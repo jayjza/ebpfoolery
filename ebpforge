@@ -1,5 +1,49 @@
 #! /usr/bin/env python
 import click
 
-from ebpforgery import forge_ippers
+GREEN = '\033[0;32m'
+RED   = '\033[0;31m'
+YELLOW = '\033[1;33m'
+END   = '\033[0m'
 
+def error(msg):
+    return f'{RED}{msg}{END}'
+
+def success(msg):
+    return f'{GREEN}{msg}{END}'
+
+def warning(msg):
+    return f'{YELLOW}{msg}{END}'
+
+bool_choices = [
+    'Yes',
+    'No'
+]
+
+from ebpforgery import forge_ippers, AVAILABLE_PERSONALITIES
+
+def _validate_personality_exists(ctx, param, value):
+    if value in AVAILABLE_PERSONALITIES:
+        return value
+    raise click.BadParameter(f'Personality supplied, {value}, is not yet supported.')
+
+@click.group()
+def cli():
+    """
+    Welcome to The Ippers Forge
+    """
+    pass
+
+@click.command()
+@click.argument('personality', callback=_validate_personality_exists)
+@click.argument('interface') # we could likely add a check that the interface exists
+def forge(personality, interface):
+    """
+    Forges your machine into a weapon of deception
+    """
+    forge_ippers(personality, interface)
+
+
+if __name__ == '__main__':
+    cli.add_command(forge)
+    cli()

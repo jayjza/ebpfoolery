@@ -1,4 +1,8 @@
 from bcc import BPF
+from os import path
+
+# We likely make this a list of the personalities directory
+AVAILABLE_PERSONALITIES = ['win2016']
 
 def forge_ippers(personality, interface):
     flags = 0
@@ -7,7 +11,9 @@ def forge_ippers(personality, interface):
     maptype = "percpu_array"
 
     # load BPF program
-    b = BPF(text = open("personalities/{}.c".format(personality)).read(),
+
+    personalities_dir = path.join(path.dirname(__file__), 'personalities')
+    b = BPF(text = open("{}/{}.c".format(personalities_dir, personality)).read(),
             cflags=["-w",
                     "-DRETURNCODE=%s" % ret,
                     "-DCTXTYPE=%s" % ctxtype,
