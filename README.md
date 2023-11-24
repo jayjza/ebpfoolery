@@ -1,8 +1,11 @@
-# Prerequsites
- - Ubuntu 22.04
-
+# Usage
+```
+./ebpforged -i <network_interface> -p <personality>
+```
 
 # Installation
+## Prerequsites
+ - Ubuntu 22.04
 
 ## Updating Ubuntu
 ```
