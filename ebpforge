@@ -37,7 +37,7 @@ def cli():
 @click.command()
 @click.argument('personality', callback=_validate_personality_exists)
 @click.argument('interface') # we could likely add a check that the interface exists
-def forge(personality, interface):
+def forge_ippers(personality, interface):
     """
     Forges your machine into a weapon of deception
     """
@@ -45,5 +45,5 @@ def forge(personality, interface):
 
 
 if __name__ == '__main__':
-    cli.add_command(forge)
+    cli.add_command(forge_ippers)
     cli()

@@ -34,3 +34,35 @@ make
 sudo make install
 popd
 ```
+
+## Development
+This project uses Python Poetry.
+[ https://python-poetry.org/docs/master/#installing-with-the-official-installer ]
+Install Python Poetry using:
+```
+curl -sSL https://install.python-poetry.org | python3 -
+```
+
+You can read over [ https://python-poetry.org/docs/master/#enable-tab-completion-for-bash-fish-or-zsh ] to enable
+tab completion.
+
+Once Python Poetry is installed. You can setup using:
+```
+cd ebpforgery
+poetry install
+```
+
+If you would like to add a new dependency:
+```
+poetry add <package_name>
+```
+
+If you would like to hop into the virtual environment, use:
+```
+poetry shell
+```
+
+If you would like to run the program using the virtualenv, but not in the shell, use:
+```
+poetry run python3 ...
+```

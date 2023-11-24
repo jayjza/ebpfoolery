@@ -22,7 +22,7 @@ def forge_ippers(personality, interface):
 
     fn = b.load_func("xdp_prog1", BPF.XDP)
     b.attach_xdp(interface, fn, flags)
-
+    print("Ippers is in place.")
     while True:
         try:
             (task, pid, cpu, flags, ts, msg) = b.trace_fields()
