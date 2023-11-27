@@ -11,6 +11,32 @@
 #define DEFAULT_ACTION XDP_PASS
 // #define DEBUG 1
 
+// TCP FLAGS
+#define TCP_FIN 0x01
+#define TCP_SYN 0x02
+#define TCP_RST 0x04
+#define TCP_PSH 0x08
+#define TCP_ACK 0x10
+#define TCP_URG 0x20
+
+// TCP OPTIONS
+#define TCPOPT_NOP 1
+#define TCPOPT_MAXSEG 2
+#define TCPOPT_WINDOW_SCALE 3
+#define TCPOPT_SACK_PERMITTED 4
+#define TCPOPT_TIMESTAMP 8
+
+// TCP OPTIONS CONSTANTS
+#define TCPOLEN_NOP 1
+#define TCPOLEN_MAXSEG 4
+#define TCPOLEN_WINDOW 3
+#define TCPOLEN_SACK_PERMITTED 2
+#define TCPOLEN_TIMESTAMP 10
+
+#ifndef TH_WIN
+#define TH_WIN window
+#endif
+
 BPF_TABLE(MAPTYPE, uint32_t, long, dropcnt, 256);
 
 static inline int parse_ipv4(void *data, u64 nh_off, void *data_end) {
@@ -82,6 +108,113 @@ static inline void update_ip_checksum(void *data, int len, uint16_t *checksum_lo
     *checksum_location = chk;
 }
 
+// Packet #1: window scale (10), NOP, MSS (1460), timestamp (TSval: 0xFFFFFFFF; TSecr: 0), SACK permitted. The window field is 1.
+// Packet #2: MSS (1400), window scale (0), SACK permitted, timestamp (TSval: 0xFFFFFFFF; TSecr: 0), EOL. The window field is 63.
+// Packet #3: Timestamp (TSval: 0xFFFFFFFF; TSecr: 0), NOP, NOP, window scale (5), NOP, MSS (640). The window field is 4.
+// Packet #4: SACK permitted, Timestamp (TSval: 0xFFFFFFFF; TSecr: 0), window scale (10), EOL. The window field is 4.
+// Packet #5: MSS (536), SACK permitted, Timestamp (TSval: 0xFFFFFFFF; TSecr: 0), window scale (10), EOL. The window field is 16.
+// Packet #6: MSS (265), SACK permitted, Timestamp (TSval: 0xFFFFFFFF; TSecr: 0). The window field is 512.
+
+
+// The htonl() function converts the unsigned integer hostlong from host byte order to network byte order.
+// The htons() function converts the unsigned short integer hostshort from host byte order to network byte order.
+// The ntohl() function converts the unsigned integer netlong from network byte order to host byte order.
+// The ntohs() function converts the unsigned short integer netshort from network byte order to host byte order.
+
+static inline void check_flags(struct tcphdr* tcp) {
+    // Check TCP flags
+    // XMAS: ALL URG,PSH,SYN,FIN
+    if (tcp->syn && tcp->urg && tcp->psh && tcp->fin) {
+        bpf_trace_printk("NMAP Xmas scan");
+    }
+    // if (tcp->syn) {
+    //     // TCP SYN flag is set
+    //     bpf_trace_printk("TCP SYN flag is set");
+    // }
+
+    // if (tcp->ack) {
+    //     // TCP ACK flag is set
+    //     bpf_trace_printk("TCP ACK flag is set");
+    // }
+    // Add more checks for other TCP flags as needed
+}
+
+static inline void check_options(struct tcphdr* tcp) {
+    // Check TCP options
+    // Assuming options start right after the TCP header
+    unsigned char* options = (unsigned char*)(tcp) + sizeof(struct tcphdr);
+    int is_probe_1_mss = 0;
+    int is_probe_1_sack = 0;
+    int is_probe_1_win_scale = 0;
+    int is_probe_1_timestamp = 0;
+    // Loop through TCP options
+    while ((options - (unsigned char*)(tcp)) < ((tcp->doff * 4) - sizeof(struct tcphdr))) {
+        // Extract the option kind
+        unsigned char optionKind = *options;
+
+        // Process the option kind as needed
+        switch (optionKind) {
+            case TCPOPT_NOP:
+                // No-operation option
+                break;
+
+            case TCPOPT_MAXSEG: {
+                // Maximum Segment Size option
+                unsigned char optionLength = *(options + 1);
+                if (optionLength == TCPOLEN_MAXSEG) {
+                    uint16_t maxSegmentSize = ntohs(*(uint16_t*)(options + 2));
+                    // bpf_trace_printk("Maximum Segment Size: " << maxSegmentSize << " bytes.");
+                    if (maxSegmentSize == 1460) {
+                        is_probe_1_mss = 1;
+                    }
+                }
+                break;
+            }
+
+            case TCPOPT_WINDOW_SCALE: {
+                // Window Scale option
+                unsigned char optionLength = *(options + 1);
+                if (optionLength == TCPOLEN_WINDOW) {
+                    uint8_t windowScale = *(uint8_t*)(options + 2);
+                    // std::cout << "Window Scale: " << static_cast<int>(windowScale) << "\n";
+                    if ((int)(windowScale) == 10) {
+                        is_probe_1_win_scale = 1;
+                    }
+                }
+                break;
+            }
+
+            case TCPOPT_SACK_PERMITTED: {
+                // Sack Permitted option
+                is_probe_1_sack = 1;
+            }
+
+            case TCPOPT_TIMESTAMP: {
+                // Timestamp option
+                unsigned char optionLength = *(options + 1);
+                if (optionLength == TCPOLEN_TIMESTAMP) {
+                    uint32_t timestampValue = ntohl(*(uint32_t*)(options + 2));
+                    uint32_t timestampEchoReply = ntohl(*(uint32_t*)(options + 6));
+                    if (timestampValue == (uint32_t)0xFFFFFFFF) {
+                        is_probe_1_timestamp = 1;
+                    }
+                    // is_probe_1_timestamp = true;
+                }
+            }
+
+            default:
+                // Handle unknown or unsupported options
+                break;
+        }
+
+        // Move to the next option
+        options += (options[1] > 0) ? options[1] : 1;
+    }
+
+    // if (is_probe_1_timestamp && is_probe_1_sack && is_probe_1_win_scale && is_probe_1_mss) {
+    //     bpf_trace_printk("FOUND PACKET 1 of the firt probe");
+    // }
+}
 
 int xdp_prog1(struct CTXTYPE *ctx) {
 
@@ -107,7 +240,7 @@ int xdp_prog1(struct CTXTYPE *ctx) {
     h_proto = eth->h_proto;
 
     // Ignore packet if ethernet protocol is not IP-based
-    if (h_proto != bpf_htons(ETH_P_IP)) // || h_proto != bpf_htons(ETH_P_IPV6))  // Not handling IPv6 right now 
+    if (h_proto != bpf_htons(ETH_P_IP)) // || h_proto != bpf_htons(ETH_P_IPV6))  // Not handling IPv6 right now
     {
 #ifdef DEBUG
         bpf_trace_printk("Not a IPv4 Packet");
@@ -116,7 +249,21 @@ int xdp_prog1(struct CTXTYPE *ctx) {
     }
 
     struct iphdr *ip = data + sizeof(*eth);
+    if (ip->protocol == IPPROTO_TCP)
+    {
+        // bpf_trace_printk("Processing TCP packet");
 
+        struct tcphdr *tcp = (void *)ip + (ip->ihl << 2);
+        if ((void *)(tcp + 1) > data_end) {
+            return rc;
+        }
+        check_flags(tcp);
+        check_options(tcp);
+
+        // Access the window size field
+        uint16_t windowSize = ntohs(tcp->TH_WIN);
+    // printf("Window Size: %d bytes.\n", windowSize);
+    }
     // Check for ICMP traffic
     if (ip->protocol == IPPROTO_ICMP)
     {
