@@ -1,4 +1,4 @@
-#include <linux/bpf.h>
+#include <uapi/linux/bpf.h>
 #include <linux/in.h>
 #include <linux/if_ether.h>
 #include <linux/if_packet.h>
@@ -38,6 +38,9 @@
 #endif
 
 BPF_TABLE(MAPTYPE, uint32_t, long, dropcnt, 256);
+
+#define MAX_BUFFER_SIZE 512
+u8 buffer[MAX_BUFFER_SIZE];                 //!< A temporary buffer where we can store some data when processing.
 
 static inline int parse_ipv4(void *data, u64 nh_off, void *data_end) {
     struct iphdr *iph = data + nh_off;
@@ -270,7 +273,7 @@ int xdp_prog1(struct CTXTYPE *ctx) {
     }
 
     // Handle UDP traffic
-    if (ip->protocol == IPPROTO_UDP)
+    else if (ip->protocol == IPPROTO_UDP)
     {
         /*
             udp_unreach {
@@ -297,17 +300,108 @@ int xdp_prog1(struct CTXTYPE *ctx) {
         }
         struct udphdr *udp = data + sizeof(*eth) + sizeof(*ip);
 
-        // Insert space between IP and UDP header for ICMP and existing IP header
-        // Insert ICMP header
+        // TODO check if this port is open before doing this.
+        // We probably need to use a BPF map to do this
+
+#ifdef DEBUG
+        bpf_trace_printk("Traffic for port %d", ntohs(udp->dest));
+        bpf_trace_printk("ip length was %d", ntohs(ip->tot_len));
+        bpf_trace_printk("Start = %p, end = %p (%d)", ctx->data, ctx->data_end, ctx->data_end - ctx->data);
+#endif
+
+        size_t new_header_size = sizeof(struct iphdr) +  sizeof(struct icmphdr);
+
+        if (bpf_xdp_adjust_head(ctx, 0 - new_header_size))
+        {
+            bpf_trace_printk("Unable to allocate space for ICMP response");
+            return DEFAULT_ACTION;
+        }
+#ifdef DEBUG
+        bpf_trace_printk("Packet is now bigger %d", new_header_size);
+#endif
+        data = (void*)(long)ctx->data;
+        data_end = (void*)(long)ctx->data_end;
+
+#ifdef DEBUG
+        bpf_trace_printk("Start = %p, end = %p, (%d)", ctx->data, ctx->data_end, ctx->data_end - ctx->data);
+#endif
+
+        if (data + sizeof(struct ethhdr) + sizeof(struct iphdr) + sizeof(struct icmphdr) > data_end)
+        {
+            bpf_trace_printk("Resized packet is too small1");
+            return DEFAULT_ACTION;
+        }
+
+        // Copy Ethernet header
+        eth = data;
+        void *old_eth_location = data + new_header_size;
+
+#ifdef DEBUG
+        bpf_trace_printk("Copying ethernet from old = %p, new = %p, (%d)", old_eth_location, eth, 0);
+#endif
+
+        // Copy the existing Ethernet Header
+        for (int i = 0; i < sizeof(struct ethhdr); i++)
+        {
+            *((u_int8_t *) eth + i) = *((u_int8_t *) old_eth_location + i);
+        }
+
         // Copy the IP header
+        if (data + sizeof(struct ethhdr) + sizeof(struct iphdr) + new_header_size > data_end)
+        {
+            bpf_trace_printk("Resized packet is too small2");
+            return DEFAULT_ACTION;
+        }
+        void *old_ip_header =  data + new_header_size + sizeof(struct ethhdr);
+
+        ip = data + sizeof(struct ethhdr);
+        for (int i = 0; i < sizeof(struct iphdr); i++)
+        {
+            *((u_int8_t *) ip + i) = *((u_int8_t *) old_ip_header + i);
+        }
+
+#ifdef DEBUG
+        bpf_trace_printk("ethernet header is %d", sizeof(struct ethhdr));
+#endif
+
+        // Insert ICMP header
+        struct icmphdr *icmp = data + sizeof(*eth) + sizeof(*ip);
+        icmp->type = ICMP_DEST_UNREACH;
+        icmp->code = ICMP_PORT_UNREACH;
+        icmp->checksum = 0;
+        icmp->un.gateway = 0;
+        update_ip_checksum(icmp, sizeof(struct icmphdr), &icmp->checksum);
+
         // Update the existing IP header
-        // Fire off the packet
+        ip->protocol = IPPROTO_ICMP;
+        ip->tot_len = htons(ntohs(ip->tot_len) + new_header_size);
 
+#ifdef DEBUG
+        bpf_trace_printk("ip length is %d", ntohs(ip->tot_len));
+#endif
 
+        // Clear don't fragement
+        if (ip->frag_off & ntohs(IP_DF))
+            ip->frag_off = ip->frag_off ^ ntohs(IP_DF);
+
+        // Set TTL to 128
+        ip->ttl = 128;
+
+        // Swap src/dst IP
+        uint32_t src_ip = ip->saddr;
+        ip->saddr = ip->daddr;
+        ip->daddr = src_ip;
+
+        swap_mac((uint8_t *)eth->h_source, (uint8_t *)eth->h_dest);
+
+        // Recalculate IP checksum
+        update_ip_checksum(ip, sizeof(struct iphdr), &ip->check);
+
+        return XDP_TX;
     }
 
     // Check for ICMP traffic
-    if (ip->protocol == IPPROTO_ICMP)
+    else if (ip->protocol == IPPROTO_ICMP)
     {
         /*
             icmp {
