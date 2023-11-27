@@ -5,9 +5,11 @@
 #include <linux/if_vlan.h>
 #include <linux/ip.h>
 #include <linux/ipv6.h>
+#include <linux/icmp.h>
 #include <net/ip.h>
 
 #define DEFAULT_ACTION XDP_PASS
+// #define DEBUG 1
 
 BPF_TABLE(MAPTYPE, uint32_t, long, dropcnt, 256);
 
@@ -89,10 +91,14 @@ int xdp_prog1(struct CTXTYPE *ctx) {
     int rc = DEFAULT_ACTION;
     uint16_t h_proto;           //! Protocol value inside the ethernet header
 
+#ifdef DEBUG
+    bpf_trace_printk("Running XDP program");
+#endif
 
     // Boundary check: check if packet is larger than a full ethernet + ip header
     if (data + sizeof(struct ethhdr) + sizeof(struct iphdr) > data_end)
     {
+        bpf_trace_printk("Invalid size for an IP packet");
         return DEFAULT_ACTION;
     }
 
@@ -103,6 +109,9 @@ int xdp_prog1(struct CTXTYPE *ctx) {
     // Ignore packet if ethernet protocol is not IP-based
     if (h_proto != bpf_htons(ETH_P_IP)) // || h_proto != bpf_htons(ETH_P_IPV6))  // Not handling IPv6 right now 
     {
+#ifdef DEBUG
+        bpf_trace_printk("Not a IPv4 Packet");
+#endif        
         return XDP_PASS;
     }
 
@@ -111,19 +120,32 @@ int xdp_prog1(struct CTXTYPE *ctx) {
     // Check for ICMP traffic
     if (ip->protocol == IPPROTO_ICMP)
     {
+        if (data + sizeof(struct ethhdr) + sizeof(struct iphdr) + sizeof(struct icmphdr) > data_end)
+        {
+            bpf_trace_printk("ICMP packet exceeding size of buffer");
+            return DEFAULT_ACTION;
+        }
+
         // If ICMP echo request
         bpf_trace_printk("Processing ICMP packet");
+        struct icmphdr *icmp = data + sizeof(*eth) + sizeof(*ip);
 
         // Build ICMP echo reply
+        icmp->code = 0;
+        icmp->type = 0;
+        // Update checksum
+        icmp->checksum = 0;
+
+        update_ip_checksum(icmp, sizeof(struct icmphdr), &icmp->checksum);
 
         // Clear don't fragement
-        // if (ip->frag_off & ntohs(IP_DF))
-        //     ip->frag_off = ip->frag_off ^ ntohs(IP_DF);
+        if (ip->frag_off & ntohs(IP_DF))
+            ip->frag_off = ip->frag_off ^ ntohs(IP_DF);
 
         // Set TTL to 128
         ip->ttl = 128;
 
-	    // Swap src/dst IP
+        // Swap src/dst IP
         uint32_t src_ip = ip->saddr;
         ip->saddr = ip->daddr;
         ip->daddr = src_ip;
@@ -135,5 +157,8 @@ int xdp_prog1(struct CTXTYPE *ctx) {
 
         return XDP_TX;
     }
+#ifdef DEBUG
+    bpf_trace_printk("Not a ICMP Packet");
+#endif
     return rc;
 }
