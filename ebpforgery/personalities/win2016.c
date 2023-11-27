@@ -1,4 +1,4 @@
-#include <uapi/linux/bpf.h>
+#include <linux/bpf.h>
 #include <linux/in.h>
 #include <linux/if_ether.h>
 #include <linux/if_packet.h>
@@ -237,18 +237,22 @@ int xdp_prog1(struct CTXTYPE *ctx) {
 
     struct ethhdr *eth = data;
 
-    h_proto = eth->h_proto;
+    h_proto = bpf_htons(eth->h_proto);
+
 
     // Ignore packet if ethernet protocol is not IP-based
-    if (h_proto != bpf_htons(ETH_P_IP)) // || h_proto != bpf_htons(ETH_P_IPV6))  // Not handling IPv6 right now
+    if (h_proto != ETH_P_IP) // || h_proto != ETH_P_IPV6)  // Not handling IPv6 right now
     {
 #ifdef DEBUG
         bpf_trace_printk("Not a IPv4 Packet");
 #endif        
         return XDP_PASS;
     }
+    bpf_trace_printk("Ether Proto: 0x%x", h_proto);
 
     struct iphdr *ip = data + sizeof(*eth);
+
+    bpf_trace_printk("IP Proto: %d", ip->protocol);
     if (ip->protocol == IPPROTO_TCP)
     {
         // bpf_trace_printk("Processing TCP packet");
@@ -264,9 +268,55 @@ int xdp_prog1(struct CTXTYPE *ctx) {
         uint16_t windowSize = ntohs(tcp->TH_WIN);
     // printf("Window Size: %d bytes.\n", windowSize);
     }
+
+    // Handle UDP traffic
+    if (ip->protocol == IPPROTO_UDP)
+    {
+        /*
+            udp_unreach {
+                reply yes;
+                df no;
+                ttl 128;
+                max-len 356;
+                tos 0;
+
+                mangle-original {
+                    ip-len 328;
+                    ip-id same;ip
+                    ip-csum same;
+                    udp-len 308;
+                    udp-csum same;
+                    udp-data same;
+                }
+            }
+        */
+        if (data + sizeof(struct ethhdr) + sizeof(struct iphdr) + sizeof(struct udphdr) > data_end)
+        {
+            bpf_trace_printk("ICMP packet exceeding size of buffer");
+            return DEFAULT_ACTION;
+        }
+        struct udphdr *udp = data + sizeof(*eth) + sizeof(*ip);
+
+        // Insert space between IP and UDP header for ICMP and existing IP header
+        // Insert ICMP header
+        // Copy the IP header
+        // Update the existing IP header
+        // Fire off the packet
+
+
+    }
+
     // Check for ICMP traffic
     if (ip->protocol == IPPROTO_ICMP)
     {
+        /*
+            icmp {
+                reply yes;
+                df none;
+                ttl 128;
+                cd zerocd;
+            }
+        */
         if (data + sizeof(struct ethhdr) + sizeof(struct iphdr) + sizeof(struct icmphdr) > data_end)
         {
             bpf_trace_printk("ICMP packet exceeding size of buffer");
