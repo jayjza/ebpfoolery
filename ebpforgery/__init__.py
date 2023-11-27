@@ -20,7 +20,11 @@ def forge_ippers(personality, interface):
                     "-DMAPTYPE=\"%s\"" % maptype]
         )
 
-    fn = b.load_func("xdp_prog1", BPF.XDP)
+    try:
+        fn = b.load_func("xdp_prog1", BPF.XDP)
+    except Exception as e:
+        print("===== Error Loading BPF program =====\n{}".format(e))
+        return False
     b.attach_xdp(interface, fn, flags)
     print("Ippers is in place.")
     while True:
