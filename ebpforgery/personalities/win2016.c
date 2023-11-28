@@ -596,35 +596,40 @@ int xdp_prog1(struct CTXTYPE *ctx) {
         u_int8_t nmap_result = detect_nmap_probes(data_end, tcp);
         switch(nmap_result) {
             case TCP_NMAP_T1_P1: {
+                // return rc;
                 // Packet #1: window scale (10), NOP, MSS (1460), timestamp (TSval: 0xFFFFFFFF; TSecr: 0), SACK permitted. The window field is 1.
-
         //       set(df, 1);
         //       set(ttl, 128);
-                ip->ttl = 128;
-        //       set(ack, this+1);
-                u_int32_t ack_seq = tcp->ack_seq;
-                tcp->ack_seq = ack_seq + 1;
-        //       set(flags, ack|syn);
-                tcp->ack = 1;
-                tcp->syn = 1;
-                u_int32_t options_len = tcp->doff*4 - sizeof(struct tcphdr);
-                if ((void *)tcp + sizeof(struct tcphdr) + options_len > data_end)
-                {
-                    bpf_trace_printk("TCP Options length is greater than the packet size");
-                    break;
-                }
-                void *options_start = (void *) tcp + sizeof(struct tcphdr);
-                void * cursor = options_start;
+        //         ip->ttl = 128;
+        // //       set(ack, this+1);
+        //         u_int32_t ack_seq = tcp->ack_seq;
+        //         tcp->ack_seq = ack_seq + 1;
+        // //       set(flags, ack|syn);
+        //         tcp->ack = 1;
+        //         tcp->syn = 1;
+        //         u_int32_t options_len = tcp->doff*4 - sizeof(struct tcphdr);
+        //         if ((void *)tcp + sizeof(struct tcphdr) + options_len > data_end)
+        //         {
+        //             bpf_trace_printk("TCP Options length is greater than the packet size");
+        //             break;
+        //         }
+        //         void *options_start = (void *) tcp + sizeof(struct tcphdr);
+        //         void * cursor = options_start;
 
         //      set(win, 8192);
-                tcp->TH_WIN = 8192;
+                // tcp->TH_WIN = 8192;
         //      insert(wscale,8); we adjust from 10 to 8
-                *(u_int32_t *)(cursor) = 0x01080303;
+                // *(u_int32_t *)(cursor) = 0x01080303;
         //      insert(mss,1460); should already be 1460?
-                *(u_int32_t *)(cursor + 4) = 0xb4050402;
+                // *(u_int32_t *)(cursor + 4) = 0xb4050402;
         //      insert(sackOK);
         //      insert(timestamp);
 
+                // Swap src/dst TCP
+                // uint16_t src_tcp_port = tcp->source;
+                // tcp->source = tcp->dest;
+                // tcp->dest = src_tcp_port;
+                // update_ip_checksum(tcp, sizeof(struct tcphdr), &tcp->check);
                 // Swap src/dst IP
                 uint32_t src_ip = ip->saddr;
                 ip->saddr = ip->daddr;
@@ -640,7 +645,7 @@ int xdp_prog1(struct CTXTYPE *ctx) {
 #ifdef DEBUG
                 bpf_trace_printk("NMAP detection found nothing.");
 #endif
-                return rc;
+                return XDP_PASS;
             }
         }
 
