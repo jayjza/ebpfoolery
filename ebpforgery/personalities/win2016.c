@@ -638,7 +638,25 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 tcp->source = tcp->dest;
                 tcp->dest = src_tcp_port;
 
-                // update_ip_checksum(tcp, sizeof(struct tcphdr), &tcp->check);
+                // Set the TCP options
+                u_int32_t options_len = 20;
+                void *options_start = (void *) tcp + sizeof(struct tcphdr);
+                void * cursor = options_start;
+                if (cursor + 20 > data_end)
+                {
+                    bpf_trace_printk("Error: boundary exceeded while trying to set TCP Options");
+                    return DEFAULT_ACTION;
+                }
+                else
+                {
+                    (*(u_int32_t *)(cursor +  0)) = htonl(0x020405b4);
+                    (*(u_int32_t *)(cursor +  4)) = htonl(0x01030308);
+                    (*(u_int32_t *)(cursor +  8)) = htonl(0x0402080a);
+                    (*(u_int32_t *)(cursor + 12)) = htonl(0x00163244);
+                    (*(u_int32_t *)(cursor + 16)) = htonl(0xffffffff);
+                }
+
+                update_ip_checksum(tcp, sizeof(struct tcphdr) + options_len, &tcp->check);
 
                 // Update the IP packet
                 // Set IP don't fragment
