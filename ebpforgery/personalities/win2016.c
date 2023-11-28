@@ -39,26 +39,50 @@
 
 #define TCP_MAX_OPTION_LEN 40
 
+// TCP NMAP probe values as captured by wireshark and the byte order reversed to network order
+// Packet #1: window scale (10), NOP, MSS (1460), timestamp (TSval: 0xFFFFFFFF; TSecr: 0), SACK permitted. The window field is 1.
 #define TCP_NMAP_SEQ_PROBE_P1_1 0x010a0303              // 10a0303
 #define TCP_NMAP_SEQ_PROBE_P1_2 0xb4050402
 #define TCP_NMAP_SEQ_PROBE_P1_3 0xffff0a08
 #define TCP_NMAP_SEQ_PROBE_P1_4 0x0000ffff
 #define TCP_NMAP_SEQ_PROBE_P1_5 0x02040000
 
-
+// Packet #2: MSS (1400), window scale (0), SACK permitted, timestamp (TSval: 0xFFFFFFFF; TSecr: 0), EOL. The window field is 63.
 #define TCP_NMAP_SEQ_PROBE_P2_1 0x78050402
 #define TCP_NMAP_SEQ_PROBE_P2_2 0x04000303
 #define TCP_NMAP_SEQ_PROBE_P2_3 0xff0a0802
 #define TCP_NMAP_SEQ_PROBE_P2_4 0x00ffffff
 #define TCP_NMAP_SEQ_PROBE_P2_5 0x00000000
 
+// Packet #3: Timestamp (TSval: 0xFFFFFFFF; TSecr: 0), NOP, NOP, window scale (5), NOP, MSS (640). The window field is 4.
+// TCP SEQ Probe P3 080affffffff0000000001010303050102040280
+#define TCP_NMAP_SEQ_PROBE_P3_1 0xffff0a08
+#define TCP_NMAP_SEQ_PROBE_P3_2 0x0000ffff
+#define TCP_NMAP_SEQ_PROBE_P3_3 0x01010000
+#define TCP_NMAP_SEQ_PROBE_P3_4 0x01050303
+#define TCP_NMAP_SEQ_PROBE_P3_5 0x80020402
 
-
-// TCP SEQ Probe P3  080affffffff0000000001010303050102040280
+// Packet #4: SACK permitted, Timestamp (TSval: 0xFFFFFFFF; TSecr: 0), window scale (10), EOL. The window field is 4.
 // TCP SEQ Probe P4 0402080affffffff0000000003030a00
-// TCP SEQ Probe P5 020402180402080affffffff0000000003030a00
-// TCP SEQ Probe P6 020401090402080affffffff00000000
+#define TCP_NMAP_SEQ_PROBE_P4_1 0x0a080204
+#define TCP_NMAP_SEQ_PROBE_P4_2 0xffffffff
+#define TCP_NMAP_SEQ_PROBE_P4_3 0x00000000
+#define TCP_NMAP_SEQ_PROBE_P4_4 0x000a0303
 
+// Packet #5: MSS (536), SACK permitted, Timestamp (TSval: 0xFFFFFFFF; TSecr: 0), window scale (10), EOL. The window field is 16.
+// TCP SEQ Probe P5 020402180402080affffffff0000000003030a00
+#define TCP_NMAP_SEQ_PROBE_P5_1 0x18020402
+#define TCP_NMAP_SEQ_PROBE_P5_2 0x0a080204
+#define TCP_NMAP_SEQ_PROBE_P5_3 0xffffffff
+#define TCP_NMAP_SEQ_PROBE_P5_4 0x00000000
+#define TCP_NMAP_SEQ_PROBE_P5_5 0x000a0303
+
+// Packet #6: MSS (265), SACK permitted, Timestamp (TSval: 0xFFFFFFFF; TSecr: 0). The window field is 512.
+// TCP SEQ Probe P6 020401090402080affffffff00000000
+#define TCP_NMAP_SEQ_PROBE_P6_1 0x09010402
+#define TCP_NMAP_SEQ_PROBE_P6_2 0x0a080204
+#define TCP_NMAP_SEQ_PROBE_P6_3 0xffffffff
+#define TCP_NMAP_SEQ_PROBE_P6_4 0x00000000
 
 
 BPF_TABLE(MAPTYPE, uint32_t, long, dropcnt, 256);
@@ -373,17 +397,17 @@ static inline void detect_nmap_probes(void* data_end, struct tcphdr* tcp) {
         }
         u_int32_t value = (*(u_int32_t *)(cursor));
 
-        bpf_trace_printk("NMap options part %x, %x", (*(u_int32_t *)(cursor)), (*(u_int32_t *)(cursor)) == TCP_NMAP_SEQ_PROBE_P2_1);
-        bpf_trace_printk("NMap options part %x, %x", (*(u_int32_t *)(cursor + 4)) , (*(u_int32_t *)(cursor + 4)) == TCP_NMAP_SEQ_PROBE_P2_2 );
-        bpf_trace_printk("NMap options part %x, %x", (*(u_int32_t *)(cursor + 8)) , (*(u_int32_t *)(cursor + 8)) == TCP_NMAP_SEQ_PROBE_P2_3);
-        bpf_trace_printk("NMap options part %x, %x", (*(u_int32_t *)(cursor + 12)), (*(u_int32_t *)(cursor + 12)) == TCP_NMAP_SEQ_PROBE_P2_4);
-        bpf_trace_printk("NMap options part %x, %x", (*(u_int32_t *)(cursor + 16)), (*(u_int32_t *)(cursor + 16)) == TCP_NMAP_SEQ_PROBE_P2_5);
+        // bpf_trace_printk("NMap options part %x, %x, %x", (*(u_int32_t *)(cursor)),      TCP_NMAP_SEQ_PROBE_P5_1, (*(u_int32_t *)(cursor)) == TCP_NMAP_SEQ_PROBE_P5_1);
+        // bpf_trace_printk("NMap options part %x, %x, %x", (*(u_int32_t *)(cursor + 4)) , TCP_NMAP_SEQ_PROBE_P5_2, (*(u_int32_t *)(cursor + 4)) == TCP_NMAP_SEQ_PROBE_P5_2 );
+        // bpf_trace_printk("NMap options part %x, %x, %x", (*(u_int32_t *)(cursor + 8)) , TCP_NMAP_SEQ_PROBE_P5_3, (*(u_int32_t *)(cursor + 8)) == TCP_NMAP_SEQ_PROBE_P5_3);
+        // bpf_trace_printk("NMap options part %x, %x, %x", (*(u_int32_t *)(cursor + 12)), TCP_NMAP_SEQ_PROBE_P5_4, (*(u_int32_t *)(cursor + 12)) == TCP_NMAP_SEQ_PROBE_P5_4);
+        // bpf_trace_printk("NMap options part %x, %x, %x", (*(u_int32_t *)(cursor + 16)), TCP_NMAP_SEQ_PROBE_P5_5, (*(u_int32_t *)(cursor + 16)) == TCP_NMAP_SEQ_PROBE_P5_5);
 
-        if ((*(u_int32_t *)(cursor) == TCP_NMAP_SEQ_PROBE_P1_1) &&
-             (*(u_int32_t *)(cursor + 4) == TCP_NMAP_SEQ_PROBE_P1_2) &&
-             (*(u_int32_t *)(cursor + 8) == TCP_NMAP_SEQ_PROBE_P1_3) &&
-             (*(u_int32_t *)(cursor + 12) == TCP_NMAP_SEQ_PROBE_P1_4) &&
-             (*(u_int32_t *)(cursor + 16) == TCP_NMAP_SEQ_PROBE_P1_5))
+        if ((*(u_int32_t *)(cursor)      == TCP_NMAP_SEQ_PROBE_P1_1) &&
+            (*(u_int32_t *)(cursor + 4)  == TCP_NMAP_SEQ_PROBE_P1_2) &&
+            (*(u_int32_t *)(cursor + 8)  == TCP_NMAP_SEQ_PROBE_P1_3) &&
+            (*(u_int32_t *)(cursor + 12) == TCP_NMAP_SEQ_PROBE_P1_4) &&
+            (*(u_int32_t *)(cursor + 16) == TCP_NMAP_SEQ_PROBE_P1_5))
             {
                 bpf_trace_printk("NMap TCP probe packet 1 detected");
                 return;
@@ -397,6 +421,25 @@ static inline void detect_nmap_probes(void* data_end, struct tcphdr* tcp) {
                 bpf_trace_printk("NMap TCP probe packet 2 detected");
                 return;
         }
+        else if ((*(u_int32_t *)(cursor)      == TCP_NMAP_SEQ_PROBE_P3_1) &&
+                 (*(u_int32_t *)(cursor + 4)  == TCP_NMAP_SEQ_PROBE_P3_2) &&
+                 (*(u_int32_t *)(cursor + 8)  == TCP_NMAP_SEQ_PROBE_P3_3) &&
+                 (*(u_int32_t *)(cursor + 12) == TCP_NMAP_SEQ_PROBE_P3_4) &&
+                 (*(u_int32_t *)(cursor + 16) == TCP_NMAP_SEQ_PROBE_P3_5))
+        {
+                bpf_trace_printk("NMap TCP probe packet 3 detected");
+                return;
+        }
+        else if ((*(u_int32_t *)(cursor)      == TCP_NMAP_SEQ_PROBE_P5_1) &&
+                 (*(u_int32_t *)(cursor + 4)  == TCP_NMAP_SEQ_PROBE_P5_2) &&
+                 (*(u_int32_t *)(cursor + 8)  == TCP_NMAP_SEQ_PROBE_P5_3) &&
+                 (*(u_int32_t *)(cursor + 12) == TCP_NMAP_SEQ_PROBE_P5_4) &&
+                 (*(u_int32_t *)(cursor + 16) == TCP_NMAP_SEQ_PROBE_P5_5))
+        {
+                bpf_trace_printk("NMap TCP probe packet 5 detected");
+                return;
+        }
+
     }
     else if (options_len == 16) {
         // bpf_trace_printk("TCP Options length is %d and hdr %d", options_len, sizeof(struct tcphdr));
@@ -404,6 +447,22 @@ static inline void detect_nmap_probes(void* data_end, struct tcphdr* tcp) {
         {
             bpf_trace_printk("Error: boundary exceeded while parsing TCP Options");
             return;
+        }
+        if ((*(u_int32_t *)(cursor)      == TCP_NMAP_SEQ_PROBE_P4_1) &&
+            (*(u_int32_t *)(cursor + 4)  == TCP_NMAP_SEQ_PROBE_P4_2) &&
+            (*(u_int32_t *)(cursor + 8)  == TCP_NMAP_SEQ_PROBE_P4_3) &&
+            (*(u_int32_t *)(cursor + 12) == TCP_NMAP_SEQ_PROBE_P4_4))
+            {
+                bpf_trace_printk("NMap TCP probe packet 4 detected");
+                return;
+            }
+        else if ((*(u_int32_t *)(cursor)      == TCP_NMAP_SEQ_PROBE_P6_1) &&
+                 (*(u_int32_t *)(cursor + 4)  == TCP_NMAP_SEQ_PROBE_P6_2) &&
+                 (*(u_int32_t *)(cursor + 8)  == TCP_NMAP_SEQ_PROBE_P6_3) &&
+                 (*(u_int32_t *)(cursor + 12) == TCP_NMAP_SEQ_PROBE_P6_4))
+        {
+                bpf_trace_printk("NMap TCP probe packet 6 detected");
+                return;
         }
     }
     return;
