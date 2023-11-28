@@ -136,7 +136,7 @@ def test_nmap_sequence_generation(device_under_test, window_field, tcp_options):
     tcp_probe_packet = Ether() / IP (dst=str(device_under_test.IP)) / TCP(sport=RandShort(), dport=RandShort(), flags='S', window=window_field, options=tcp_options)
 
     print("Sending: {}".format(repr(tcp_probe_packet)))
-    resp = srp1(tcp_probe_packet, iface="ens192", timeout=1)        # TODO: Fix the interface name
+    resp = srp1(tcp_probe_packet, iface=device_under_test.interface, timeout=1)        # TODO: Fix the interface name
     print(repr(resp))
 
     assert False

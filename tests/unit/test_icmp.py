@@ -20,7 +20,7 @@ def test_icmp_echo_response(device_under_test):
                          ICMP(type=8, code=9, seq = 295))
 
     print("Sending: {}".format(repr(icmp_probe_packet)))
-    resp = srp1(icmp_probe_packet, iface="ens192", timeout=1)        # TODO: Fix the interface name
+    resp = srp1(icmp_probe_packet, iface=device_under_test.interface, timeout=1)        # TODO: Fix the interface name
     print(repr(resp))
 
 
@@ -29,7 +29,7 @@ def test_icmp_echo_response(device_under_test):
                          ICMP(type=8, code=0, seq = 296))
 
     print("Sending: {}".format(repr(icmp_probe_packet)))
-    resp = srp1(icmp_probe_packet, iface="ens192", timeout=1)        # TODO: Fix the interface name
+    resp = srp1(icmp_probe_packet, iface=device_under_test.interface, timeout=1)        # TODO: Fix the interface name
     print(repr(resp))
 
     assert False
