@@ -593,6 +593,7 @@ int xdp_prog1(struct CTXTYPE *ctx) {
         check_flags(tcp);
         // check_options2(tcp, data_end);
         u_int8_t nmap_result = detect_nmap_probes(data_end, tcp);
+        bpf_trace_printk("detect_nmap_probes %d", nmap_result);
         switch(nmap_result) {
             case TCP_NMAP_T1_P1: {
                 // return rc;
@@ -624,28 +625,36 @@ int xdp_prog1(struct CTXTYPE *ctx) {
         //      insert(sackOK);
         //      insert(timestamp);
 
+                // Fix TCP header
+                tcp->syn = 1;
+                tcp->ack = 1;
+
+                tcp->ack_seq = htonl(ntohl(tcp->seq) + 1);
+                // TODO: We need some random sequence number for the return
+                tcp->window = htons(8192);
+
                 // Swap src/dst TCP
-                // uint16_t src_tcp_port = tcp->source;
-                // tcp->source = tcp->dest;
-                // tcp->dest = src_tcp_port;
+                uint16_t src_tcp_port = tcp->source;
+                tcp->source = tcp->dest;
+                tcp->dest = src_tcp_port;
+
                 // update_ip_checksum(tcp, sizeof(struct tcphdr), &tcp->check);
+
+                // Update the IP packet
+                // Set IP don't fragment
+                ip->frag_off | ntohs(IP_DF);
+                // Set TTL to 128
+                ip->ttl = 128;
+
                 // Swap src/dst IP
+                uint32_t src_ip = ip->saddr;
+                ip->saddr = ip->daddr;
+                ip->daddr = src_ip;
+                // Recalculate IP checksum
+                update_ip_checksum(ip, sizeof(struct iphdr), &ip->check);
 
-                // Clear don't fragement
-                // if (ip->frag_off & ntohs(IP_DF))
-                //     ip->frag_off = ip->frag_off ^ ntohs(IP_DF);
-
-                // // Set TTL to 128
-                // ip->ttl = 128;
-                // // Recalculate IP checksum
-
-
-                // uint32_t src_ip = ip->saddr;
-                // ip->saddr = ip->daddr;
-                // ip->daddr = src_ip;
-                // swap_mac((uint8_t *)eth->h_source, (uint8_t *)eth->h_dest);
-                // // Recalculate IP checksum
-                // update_ip_checksum(ip, sizeof(struct iphdr), &ip->check);
+                // Update the ethernet packet
+                swap_mac((uint8_t *)eth->h_source, (uint8_t *)eth->h_dest);
                 bpf_trace_printk("NMAP detection found probe 1 of test 1");
                 return XDP_TX;
                 // return rc;
