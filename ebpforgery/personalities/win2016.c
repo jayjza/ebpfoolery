@@ -39,6 +39,20 @@
 
 #define TCP_MAX_OPTION_LEN 40
 
+#define TCP_NMAP_SEQ_PROBE_P1_1 0x010a0303              // 10a0303
+#define TCP_NMAP_SEQ_PROBE_P1_2 0xb4050402
+#define TCP_NMAP_SEQ_PROBE_P1_3 0xffff0a08
+#define TCP_NMAP_SEQ_PROBE_P1_4 0x0000ffff
+#define TCP_NMAP_SEQ_PROBE_P1_5 0x02050000
+
+
+// task=b'<idle>', pid=0, msg=b'NMap options part 10a0303'
+// task=b'<idle>', pid=0, msg=b'NMap options part b4050402'
+// task=b'<idle>', pid=0, msg=b'NMap options part ffff0a08'
+// task=b'<idle>', pid=0, msg=b'NMap options part ffff'
+// task=b'<idle>', pid=0, msg=b'NMap options part 2050000'
+
+
 
 BPF_TABLE(MAPTYPE, uint32_t, long, dropcnt, 256);
 
@@ -318,6 +332,68 @@ static inline void check_options2(struct tcphdr* tcp, void* data_end) {
 
 }
 
+
+
+static inline void detect_nmap_probes(void* data_end, struct tcphdr* tcp) {
+    u_int32_t options_len = tcp->doff*4 - sizeof(struct tcphdr);
+
+#ifdef DEBUG
+    bpf_trace_printk("TCP Options length is %d and hdr %d", options_len, sizeof(struct tcphdr));
+#endif
+
+    void *blah = (void *)tcp + sizeof(struct tcphdr) + options_len;
+#ifdef DEBUG
+    bpf_trace_printk("tcp start = %p, data_end = %p (%d))", blah, data_end, data_end - (void *) tcp);
+#endif
+
+    if ((void *)tcp + sizeof(struct tcphdr) + options_len > data_end)
+    {
+        bpf_trace_printk("TCP Options length is greater than the packet size");
+        return;
+    }
+
+    void *options_start = (void *) tcp + sizeof(struct tcphdr);
+
+    void * cursor = options_start;
+    uint16_t i;
+    // The nmap probe TCP options is either 16 or 20 bytes
+    if (options_len == 20) {
+        // bpf_trace_printk("TCP Options length is %d and hdr %d", options_len, sizeof(struct tcphdr));
+        if (cursor + 20 > data_end)
+        {
+            bpf_trace_printk("Error: boundary exceeded while parsing TCP Options");
+            return;
+        }
+        u_int32_t value = (*(u_int32_t *)(cursor));
+
+        bpf_trace_printk("NMap options part %x, %x", (*(u_int32_t *)(cursor)), (*(u_int32_t *)(cursor)) == TCP_NMAP_SEQ_PROBE_P1_1);
+        bpf_trace_printk("NMap options part %x", (*(u_int32_t *)(cursor + 4)) == TCP_NMAP_SEQ_PROBE_P1_2 );
+        bpf_trace_printk("NMap options part %x", (*(u_int32_t *)(cursor + 8)) == TCP_NMAP_SEQ_PROBE_P1_3);
+        bpf_trace_printk("NMap options part %x", (*(u_int32_t *)(cursor + 12)) == TCP_NMAP_SEQ_PROBE_P1_4);
+        bpf_trace_printk("NMap options part %x", (*(u_int32_t *)(cursor + 16)) == TCP_NMAP_SEQ_PROBE_P1_5);
+
+        if ((*(u_int32_t *)(cursor) == TCP_NMAP_SEQ_PROBE_P1_1) &&
+             (*(u_int32_t *)(cursor + 4) == TCP_NMAP_SEQ_PROBE_P1_2) &&
+             (*(u_int32_t *)(cursor + 8) == TCP_NMAP_SEQ_PROBE_P1_3) &&
+             (*(u_int32_t *)(cursor + 12) == TCP_NMAP_SEQ_PROBE_P1_4) &&
+             (*(u_int32_t *)(cursor + 16) == TCP_NMAP_SEQ_PROBE_P1_5))
+            {
+                bpf_trace_printk("NMap TCP probe packet 1 detected");
+                return;
+            }
+    }
+    else if (options_len == 16) {
+        // bpf_trace_printk("TCP Options length is %d and hdr %d", options_len, sizeof(struct tcphdr));
+        if (cursor + 16 > data_end)
+        {
+            bpf_trace_printk("Error: boundary exceeded while parsing TCP Options");
+            return;
+        }
+    }
+    return;
+}
+
+
 int xdp_prog1(struct CTXTYPE *ctx) {
 
     void* data_end = (void*)(long)ctx->data_end;
@@ -350,11 +426,15 @@ int xdp_prog1(struct CTXTYPE *ctx) {
 #endif        
         return XDP_PASS;
     }
+#ifdef DEBUG
     bpf_trace_printk("Ether Proto: 0x%x", h_proto);
+#endif
 
     struct iphdr *ip = data + sizeof(*eth);
 
+#ifdef DEBUG
     bpf_trace_printk("IP Proto: %d", ip->protocol);
+#endif
     if (ip->protocol == IPPROTO_TCP)
     {
         // bpf_trace_printk("Processing TCP packet");
@@ -364,10 +444,13 @@ int xdp_prog1(struct CTXTYPE *ctx) {
             return rc;
         }
 
+#ifdef DEBUG
         bpf_trace_printk("TCP connection from %d to %d", ntohs(tcp->source), ntohs(tcp->dest));
+#endif
 
         check_flags(tcp);
-        check_options2(tcp, data_end);
+        // check_options2(tcp, data_end);
+        detect_nmap_probes(data_end, tcp);
 
 
         // Access the window size field
