@@ -70,7 +70,7 @@ sequence_probes = [
             ('Timestamp', (4294967295, 0)),
             ('SAckOK', b''),
         ],
-        id='Packet 1'
+        id='Packet_1'
     ),
     pytest.param(           # Packet #2: MSS (1400), window scale (0), SACK permitted, timestamp (TSval: 0xFFFFFFFF; TSecr: 0), EOL. The window field is 63.
         63,  # Window Field
@@ -81,7 +81,7 @@ sequence_probes = [
             ('Timestamp', (4294967295, 0)),
             ('EOL', b''),
         ],
-        id='Packet 2'
+        id='Packet_2'
     ),
     pytest.param(           # Packet #3: Timestamp (TSval: 0xFFFFFFFF; TSecr: 0), NOP, NOP, window scale (5), NOP, MSS (640). The window field is 4.
         4,  # Window Field
@@ -93,7 +93,7 @@ sequence_probes = [
             ('NOP', b''),
             ('MSS', struct.pack('>H', 640)),
         ],
-        id='Packet 3'
+        id='Packet_3'
     ),
     pytest.param(           # Packet #4: SACK permitted, Timestamp (TSval: 0xFFFFFFFF; TSecr: 0), window scale (10), EOL. The window field is 4.
         4,  # Window Field
@@ -103,18 +103,18 @@ sequence_probes = [
             ('WScale', 10),
             ('EOL', b''),
         ],
-        id='Packet 4'
+        id='Packet_4'
     ),
     pytest.param(           # Packet #5: MSS (536), SACK permitted, Timestamp (TSval: 0xFFFFFFFF; TSecr: 0), window scale (10), EOL. The window field is 16.
         16,  # Window Field
         [   # TCP Options
             ('MSS', struct.pack('>H', 536)),
-            ('Timestamp', (4294967295, 0)),
             ('SAckOK', b''),
+            ('Timestamp', (4294967295, 0)),
             ('WScale', 10),
             ('EOL', b''),
         ],
-        id='Packet 5'
+        id='Packet_5'
     ),
     pytest.param(           # Packet #6: MSS (265), SACK permitted, Timestamp (TSval: 0xFFFFFFFF; TSecr: 0). The window field is 512.
         512,  # Window Field
@@ -123,7 +123,7 @@ sequence_probes = [
             ('SAckOK', b''),
             ('Timestamp', (4294967295, 0)),
         ],
-        id='Packet 6'
+        id='Packet_6'
     ),
 ]
 
