@@ -445,7 +445,7 @@ static inline uint8_t detect_nmap_probes(void* data_end, struct tcphdr* tcp) {
                  (*(u_int32_t *)(cursor + 16) == TCP_NMAP_SEQ_PROBE_P3_5))
         {
                 bpf_trace_printk("NMap TCP probe packet 3 detected");
-                return;
+                return TCP_NMAP_T1_P3;
         }
         else if ((*(u_int32_t *)(cursor)      == TCP_NMAP_SEQ_PROBE_P5_1) &&
                  (*(u_int32_t *)(cursor + 4)  == TCP_NMAP_SEQ_PROBE_P5_2) &&
@@ -454,7 +454,7 @@ static inline uint8_t detect_nmap_probes(void* data_end, struct tcphdr* tcp) {
                  (*(u_int32_t *)(cursor + 16) == TCP_NMAP_SEQ_PROBE_P5_5))
         {
                 bpf_trace_printk("NMap TCP probe packet 5 detected");
-                return;
+                return TCP_NMAP_T1_P5;
         }
 
     }
@@ -471,7 +471,7 @@ static inline uint8_t detect_nmap_probes(void* data_end, struct tcphdr* tcp) {
             (*(u_int32_t *)(cursor + 12) == TCP_NMAP_SEQ_PROBE_P4_4))
             {
                 bpf_trace_printk("NMap TCP probe packet 4 detected");
-                return;
+                return TCP_NMAP_T1_P4;
             }
         else if ((*(u_int32_t *)(cursor)      == TCP_NMAP_SEQ_PROBE_P6_1) &&
                  (*(u_int32_t *)(cursor + 4)  == TCP_NMAP_SEQ_PROBE_P6_2) &&
@@ -479,7 +479,7 @@ static inline uint8_t detect_nmap_probes(void* data_end, struct tcphdr* tcp) {
                  (*(u_int32_t *)(cursor + 12) == TCP_NMAP_SEQ_PROBE_P6_4))
         {
                 bpf_trace_printk("NMap TCP probe packet 6 detected");
-                return;
+                return TCP_NMAP_T1_P6;
         }
     }
     return TCP_NMAP_NONE;
@@ -590,7 +590,6 @@ int xdp_prog1(struct CTXTYPE *ctx) {
 // 	__be16	urg_ptr;
 // };
 
-
         check_flags(tcp);
         // check_options2(tcp, data_end);
         u_int8_t nmap_result = detect_nmap_probes(data_end, tcp);
@@ -601,27 +600,27 @@ int xdp_prog1(struct CTXTYPE *ctx) {
         //       set(df, 1);
         //       set(ttl, 128);
         //         ip->ttl = 128;
-        // //       set(ack, this+1);
+        // // //       set(ack, this+1);
         //         u_int32_t ack_seq = tcp->ack_seq;
         //         tcp->ack_seq = ack_seq + 1;
-        // //       set(flags, ack|syn);
+        // // //       set(flags, ack|syn);
         //         tcp->ack = 1;
         //         tcp->syn = 1;
-        //         u_int32_t options_len = tcp->doff*4 - sizeof(struct tcphdr);
-        //         if ((void *)tcp + sizeof(struct tcphdr) + options_len > data_end)
-        //         {
-        //             bpf_trace_printk("TCP Options length is greater than the packet size");
-        //             break;
-        //         }
-        //         void *options_start = (void *) tcp + sizeof(struct tcphdr);
-        //         void * cursor = options_start;
+                // u_int32_t options_len = tcp->doff*4 - sizeof(struct tcphdr);
+                // if ((void *)tcp + sizeof(struct tcphdr) + options_len > data_end)
+                // {
+                //     bpf_trace_printk("TCP Options length is greater than the packet size");
+                //     break;
+                // }
+                // void *options_start = (void *) tcp + sizeof(struct tcphdr);
+                // void * cursor = options_start;
 
         //      set(win, 8192);
-                // tcp->TH_WIN = 8192;
-        //      insert(wscale,8); we adjust from 10 to 8
-                // *(u_int32_t *)(cursor) = 0x01080303;
-        //      insert(mss,1460); should already be 1460?
-                // *(u_int32_t *)(cursor + 4) = 0xb4050402;
+        //         tcp->TH_WIN = 8192;
+        // //      insert(wscale,8); we adjust from 10 to 8
+        //         *(u_int32_t *)(cursor) = 0x01080303;
+        // //      insert(mss,1460); should already be 1460?
+        //         *(u_int32_t *)(cursor + 4) = 0xb4050402;
         //      insert(sackOK);
         //      insert(timestamp);
 
@@ -631,12 +630,22 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 // tcp->dest = src_tcp_port;
                 // update_ip_checksum(tcp, sizeof(struct tcphdr), &tcp->check);
                 // Swap src/dst IP
-                uint32_t src_ip = ip->saddr;
-                ip->saddr = ip->daddr;
-                ip->daddr = src_ip;
-                swap_mac((uint8_t *)eth->h_source, (uint8_t *)eth->h_dest);
-                // Recalculate IP checksum
-                update_ip_checksum(ip, sizeof(struct iphdr), &ip->check);
+
+                // Clear don't fragement
+                // if (ip->frag_off & ntohs(IP_DF))
+                //     ip->frag_off = ip->frag_off ^ ntohs(IP_DF);
+
+                // // Set TTL to 128
+                // ip->ttl = 128;
+                // // Recalculate IP checksum
+
+
+                // uint32_t src_ip = ip->saddr;
+                // ip->saddr = ip->daddr;
+                // ip->daddr = src_ip;
+                // swap_mac((uint8_t *)eth->h_source, (uint8_t *)eth->h_dest);
+                // // Recalculate IP checksum
+                // update_ip_checksum(ip, sizeof(struct iphdr), &ip->check);
                 bpf_trace_printk("NMAP detection found probe 1 of test 1");
                 return XDP_TX;
                 // return rc;
