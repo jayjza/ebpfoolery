@@ -37,6 +37,9 @@
 #define TH_WIN window
 #endif
 
+#define TCP_MAX_OPTION_LEN 40
+
+
 BPF_TABLE(MAPTYPE, uint32_t, long, dropcnt, 256);
 
 #define MAX_BUFFER_SIZE 512
@@ -219,6 +222,102 @@ static inline void check_options(struct tcphdr* tcp) {
     // }
 }
 
+static inline void check_options2(struct tcphdr* tcp, void* data_end) {
+    u_int32_t options_len = tcp->doff*4 - sizeof(struct tcphdr);
+
+    bpf_trace_printk("TCP Options length is %d and hdr %d", options_len, sizeof(struct tcphdr));
+
+    void *blah = (void *)tcp + sizeof(struct tcphdr) + options_len;
+    bpf_trace_printk("tcp start = %p, data_end = %p (%d))", blah, data_end, data_end - (void *) tcp);
+
+    if ((void *)tcp + sizeof(struct tcphdr) + options_len > data_end)
+    {
+        bpf_trace_printk("TCP Options length is greater than the packet size");
+        return;
+    }
+
+    void *options_start = (void *) tcp + sizeof(struct tcphdr);
+
+    void * cursor = options_start;
+    uint16_t i;
+
+    for (i = 0; i < TCP_MAX_OPTION_LEN; i++)
+    {
+        bpf_trace_printk("Running i = %d", i);
+        if (i >= options_len)
+        {
+            bpf_trace_printk("Reached end of TCP Options");
+            break;
+        }
+        if (cursor + 1 > data_end)
+        {
+            bpf_trace_printk("Error: boundary exceeded while parsing TCP Options");
+            break;
+        }
+
+        if (*(u8 *)(cursor) == TCPOPT_MAXSEG)
+        {
+            bpf_trace_printk("TCP Option Maximum Segment Size");
+            if (cursor + 4 > data_end)
+            {
+                bpf_trace_printk("Error: boundary exceeded while parsing TCP Option MSS");
+            }
+            else
+            {
+                u_int16_t mss = htons(*(uint16_t *)(cursor + 2));
+                bpf_trace_printk("MSS is = %d", mss);
+            }
+        }
+
+        cursor++;
+    }
+
+    // for (int i = 0; i < options_len; i++)
+    // {
+    //     bpf_trace_printk("TCP Options value %x", options + i);
+
+    //     if (options + i > data_end)
+    //         break;
+
+    //     u8 value = *((u8 *)(options + i));
+        
+    //     switch (value)
+    //     {
+    //         case TCPOPT_NOP:
+    //             break;
+    //     //     case TCPOPT_MAXSEG:
+    //     //         bpf_trace_printk("TCP Option Maximum Segment Size");
+    //     //         break;
+    //     //     case TCPOPT_WINDOW_SCALE:
+    //     //         bpf_trace_printk("TCP Option Window Scale");
+    //     //         break;
+    //     //     case TCPOPT_SACK_PERMITTED:
+    //     //         bpf_trace_printk("TCP Option SACK Allowed");
+    //     //         break;
+    //     //     case TCPOPT_TIMESTAMP:
+    //     //         bpf_trace_printk("TCP Option Timestamp");
+    //     //         break;
+    //         default:
+    //             bpf_trace_printk("TCP Option Unknown");
+    //             break;
+    //     }
+
+    //     if (i > 2)
+    //         break;
+    //     // if (options + i > data_end)
+    //     // {
+    //     //     bpf_trace_printk("Invalid option positioon");
+    //     //     break;
+    //     // }
+    //     // u_int8_t val = *(options + i);
+    //     // bpf_trace_printk("TCP Options value %d", val);
+    //     // if (*(options + i) == 2)
+    //     //     bpf_trace_printk("Found MSS value");
+
+    // }
+
+}
+
 int xdp_prog1(struct CTXTYPE *ctx) {
 
     void* data_end = (void*)(long)ctx->data_end;
@@ -264,8 +363,12 @@ int xdp_prog1(struct CTXTYPE *ctx) {
         if ((void *)(tcp + 1) > data_end) {
             return rc;
         }
+
+        bpf_trace_printk("TCP connection from %d to %d", ntohs(tcp->source), ntohs(tcp->dest));
+
         check_flags(tcp);
-        check_options(tcp);
+        check_options2(tcp, data_end);
+
 
         // Access the window size field
         uint16_t windowSize = ntohs(tcp->TH_WIN);
