@@ -141,7 +141,7 @@ sequence_probes = [
             'TCP' : {
                 'window': 8192,
                 'flags': 'SA',
-                'options': [('MSS', 1460), ('WScale', 8), ('SAckOK', b''), ('Timestamp', (1455180, 0))],
+                'options': [('MSS', 1460), ('NOP', None), ('WScale', 8), ('SAckOK', b''), ('Timestamp', (1455180, 0))],
             }
         },
         id='Packet_4'
