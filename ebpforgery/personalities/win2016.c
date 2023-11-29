@@ -99,6 +99,16 @@
 #define TCP_NMAP_SEQ_PROBE_P6_3 0xffffffff
 #define TCP_NMAP_SEQ_PROBE_P6_4 0x00000000
 
+// T2-T6 Options = 03030a01 02040109 080affff ffff0000 00000402
+#define TCP_NMAP_T2_T7_PROBES_1 0x010a0303
+#define TCP_NMAP_T2_T7_PROBES_2 0x09010402
+#define TCP_NMAP_T2_T7_PROBES_3 0xffff0a08
+#define TCP_NMAP_T2_T7_PROBES_4 0x0000ffff
+#define TCP_NMAP_T2_T7_PROBES_5 0x02040000
+
+// T7 sends a TCP packet with the FIN, PSH, and URG flags set and a window field of 65535 to a closed port. The IP DF bit is not set.
+// T7 Options = 03030f01 02040109 080affff ffff0000 00000402
+
 
 BPF_TABLE(MAPTYPE, uint32_t, long, dropcnt, 256);
 
@@ -205,7 +215,7 @@ static inline void check_flags(struct tcphdr* tcp) {
     // Add more checks for other TCP flags as needed
 }
 
-static inline uint8_t detect_nmap_probes(void* data_end, struct tcphdr* tcp) {
+static inline uint8_t detect_nmap_probes(void* data_end, struct tcphdr* tcp, struct iphdr *ip) {
     u_int32_t options_len = tcp->doff*4 - sizeof(struct tcphdr);
 
 #ifdef DEBUG
@@ -238,11 +248,11 @@ static inline uint8_t detect_nmap_probes(void* data_end, struct tcphdr* tcp) {
         u_int32_t value = (*(u_int32_t *)(cursor));
 
 #ifdef DEBUG
-        bpf_trace_printk("NMap options part %x, %x", (*(u_int32_t *)(cursor)), (*(u_int32_t *)(cursor)) == TCP_NMAP_SEQ_PROBE_P2_1);
-        bpf_trace_printk("NMap options part %x, %x", (*(u_int32_t *)(cursor + 4)) , (*(u_int32_t *)(cursor + 4)) == TCP_NMAP_SEQ_PROBE_P2_2 );
-        bpf_trace_printk("NMap options part %x, %x", (*(u_int32_t *)(cursor + 8)) , (*(u_int32_t *)(cursor + 8)) == TCP_NMAP_SEQ_PROBE_P2_3);
-        bpf_trace_printk("NMap options part %x, %x", (*(u_int32_t *)(cursor + 12)), (*(u_int32_t *)(cursor + 12)) == TCP_NMAP_SEQ_PROBE_P2_4);
-        bpf_trace_printk("NMap options part %x, %x", (*(u_int32_t *)(cursor + 16)), (*(u_int32_t *)(cursor + 16)) == TCP_NMAP_SEQ_PROBE_P2_5);
+        bpf_trace_printk("NMap options part %x, %x, %x", (*(u_int32_t *)(cursor))     , TCP_NMAP_T2_T7_PROBES_1, (*(u_int32_t *)(cursor)) == TCP_NMAP_T2_T7_PROBES_1);
+        bpf_trace_printk("NMap options part %x, %x, %x", (*(u_int32_t *)(cursor + 4)) , TCP_NMAP_T2_T7_PROBES_2, (*(u_int32_t *)(cursor + 4)) == TCP_NMAP_T2_T7_PROBES_2 );
+        bpf_trace_printk("NMap options part %x, %x, %x", (*(u_int32_t *)(cursor + 8)) , TCP_NMAP_T2_T7_PROBES_3, (*(u_int32_t *)(cursor + 8)) == TCP_NMAP_T2_T7_PROBES_3);
+        bpf_trace_printk("NMap options part %x, %x, %x", (*(u_int32_t *)(cursor + 12)), TCP_NMAP_T2_T7_PROBES_4, (*(u_int32_t *)(cursor + 12)) == TCP_NMAP_T2_T7_PROBES_4);
+        bpf_trace_printk("NMap options part %x, %x, %x", (*(u_int32_t *)(cursor + 16)), TCP_NMAP_T2_T7_PROBES_5, (*(u_int32_t *)(cursor + 16)) == TCP_NMAP_T2_T7_PROBES_5);
 #endif
 
         if ((*(u_int32_t *)(cursor) == TCP_NMAP_SEQ_PROBE_P1_1) &&
@@ -284,6 +294,29 @@ static inline uint8_t detect_nmap_probes(void* data_end, struct tcphdr* tcp) {
         {
                 // bpf_trace_printk("NMap TCP probe packet 5 detected");
                 return TCP_NMAP_T1_P5;
+        }
+        else if ((*(u_int32_t *)(cursor)      == TCP_NMAP_T2_T7_PROBES_1) &&
+                 (*(u_int32_t *)(cursor + 4)  == TCP_NMAP_T2_T7_PROBES_2) &&
+                 (*(u_int32_t *)(cursor + 8)  == TCP_NMAP_T2_T7_PROBES_3) &&
+                 (*(u_int32_t *)(cursor + 12) == TCP_NMAP_T2_T7_PROBES_4) &&
+                 (*(u_int32_t *)(cursor + 16) == TCP_NMAP_T2_T7_PROBES_5) )
+        {
+            u_int16_t flags = ntohs(tcp_flag_word(tcp)) & 0x00FF;    // We only want a part of the word, and we only want the flag field
+            // TODO: We need to check if the ports is open / closed, but we cannot determine that right now from XDP
+
+            if ((flags == 0) &&
+                (ntohs(tcp->window) == 128) &&
+                (ntohs(ip->frag_off) & IP_DF))
+            {
+                bpf_trace_printk("NMap TCP probe T2 packet detected");
+                return TCP_NMAP_T2_P1;
+            }
+            // if (tcp->syn && tcp->urg && tcp->psh && tcp->fin) {
+            // if (tcp->syn == 0)
+
+
+                // bpf_trace_printk("NMap TCP probe packet 5 detected");
+                // return TCP_NMAP_T1_P5;
         }
 
     }
@@ -423,7 +456,7 @@ int xdp_prog1(struct CTXTYPE *ctx) {
 
         check_flags(tcp);
         // check_options2(tcp, data_end);
-        u_int8_t nmap_result = detect_nmap_probes(data_end, tcp);
+        u_int8_t nmap_result = detect_nmap_probes(data_end, tcp, ip);
         // bpf_trace_printk("detect_nmap_probes %d", nmap_result);
         switch(nmap_result) {
             case TCP_NMAP_T1_P1: {
