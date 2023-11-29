@@ -631,6 +631,7 @@ int xdp_prog1(struct CTXTYPE *ctx) {
         //      insert(timestamp);
 
                 // Fix TCP header
+                // Set Syn/Ack on the TCP header
                 tcp->syn = 1;
                 tcp->ack = 1;
 
@@ -683,8 +684,52 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 // return rc;
             }
             case TCP_NMAP_T1_P2: {
+                // Fix TCP header
+                // Set Syn/Ack on the TCP header
+                tcp->syn = 1;
+                tcp->ack = 1;
+
+                // TODO: We need some random sequence number for the return
+                tcp->window = htons(8192);
+
+                // Swap src/dst TCP
+                uint16_t src_tcp_port = tcp->source;
+                tcp->source = tcp->dest;
+                tcp->dest = src_tcp_port;
+
+                // Set the TCP options
+                u_int32_t options_len = 20;
+                void *options_start = (void *) tcp + sizeof(struct tcphdr);
+                void * cursor = options_start;
+                if (cursor + 20 > data_end)
+                {
+                    bpf_trace_printk("Error: boundary exceeded while trying to set TCP Options");
+                    return DEFAULT_ACTION;
+                }
+                else
+                {
+                    (*(u_int32_t *)(cursor +  0)) = htonl(0x020405b4);
+                    (*(u_int32_t *)(cursor +  4)) = htonl(0x01030308);
+                    (*(u_int32_t *)(cursor +  8)) = htonl(0x0402080a);
+                    (*(u_int32_t *)(cursor + 12)) = htonl(0x00163244);
+                    (*(u_int32_t *)(cursor + 16)) = htonl(0xffffffff);
+                }
+
+                update_ip_checksum(tcp, sizeof(struct tcphdr) + options_len, &tcp->check);
+
+                // Update the IP packet
+                // Swap src/dst IP
+                uint32_t src_ip = ip->saddr;
+                ip->saddr = ip->daddr;
+                ip->daddr = src_ip;
+                // Recalculate IP checksum
+                update_ip_checksum(ip, sizeof(struct iphdr), &ip->check);
+
+                // Update the ethernet packet
+                swap_mac((uint8_t *)eth->h_source, (uint8_t *)eth->h_dest);
+
                 bpf_trace_printk("NMAP detection found probe 2 of test 1");
-                return rc;
+                return XDP_TX;
             }
             case TCP_NMAP_T1_P3: {
                 bpf_trace_printk("NMAP detection found probe 3 of test 1");
