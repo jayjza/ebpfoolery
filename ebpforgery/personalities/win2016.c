@@ -594,6 +594,27 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 return XDP_TX;
             }
             case TCP_NMAP_T1_P4: {
+                // For probe4 we need to make the buffer slightly bigger
+                if (bpf_xdp_adjust_tail(ctx, 4))
+                {
+                    bpf_trace_printk("Error: Failed to increase packet size");
+                    return DEFAULT_ACTION;
+                }
+                data_end = (void*)(long)ctx->data_end;
+                data = (void*)(long)ctx->data;
+
+                if (data + sizeof(struct ethhdr) + sizeof(struct iphdr) + sizeof(struct tcphdr) > data_end)
+                {
+                    bpf_trace_printk("Invalid size for an IP packet");
+                    return DEFAULT_ACTION;
+                }
+                struct ethhdr *eth = data;
+                struct iphdr *ip = data + sizeof(*eth);
+                struct tcphdr *tcp = (void *)ip + (ip->ihl << 2);
+                if ((void *)(tcp + 1) > data_end) {
+                    return DEFAULT_ACTION;
+                }
+
                 // Fix TCP header
                 // Set Syn/Ack on the TCP header
                 tcp->syn = 1;
@@ -611,6 +632,7 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 u_int32_t options_len = 20;
                 void *options_start = (void *) tcp + sizeof(struct tcphdr);
                 void * cursor = options_start;
+
                 if (cursor + 20 > data_end)
                 {
                     bpf_trace_printk("Error: boundary exceeded while trying to set TCP Options");
