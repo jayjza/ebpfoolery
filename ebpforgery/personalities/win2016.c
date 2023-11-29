@@ -790,6 +790,15 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 bpf_trace_printk("NMAP detection found probe 6 of test 1");
                 return XDP_TX;
             }
+            case TCP_NMAP_T2_P1:
+            case TCP_NMAP_T3_P1:
+            case TCP_NMAP_T4_P1:
+            case TCP_NMAP_T6_P1:
+            case TCP_NMAP_T7_P1:
+            {
+                return XDP_DROP;
+            }
+
             case TCP_NMAP_NONE: {
 #ifdef DEBUG
                 bpf_trace_printk("NMAP detection found nothing.");
