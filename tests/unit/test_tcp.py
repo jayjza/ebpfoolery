@@ -77,6 +77,8 @@ sequence_probes = [
             },
             'TCP' : {
                 'window': 8192,
+                'flags': 'SA',
+                'options': [('MSS', 1460), ('NOP', None), ('WScale', 8), ('SAckOK', b''), ('Timestamp', (1454660, 4294967295))],
             }
         },
         id='Packet_1'
@@ -96,6 +98,8 @@ sequence_probes = [
             },
             'TCP' : {
                 'window': 8192,
+                'flags': 'SA',
+                'options': [('MSS', 1460), ('NOP', None), ('WScale', 8), ('SAckOK', b''), ('Timestamp', (1454660, 4294967295))],
             }
         },
         id='Packet_2'
@@ -116,6 +120,8 @@ sequence_probes = [
             },
             'TCP' : {
                 'window': 8192,
+                'flags': 'SA',
+                'options': [('MSS', 1460), ('NOP', None), ('WScale', 8), ('NOP', None), ('NOP', None), ('Timestamp', (1454870, 4294967295))],
             }
         },
         id='Packet_3'
@@ -134,6 +140,8 @@ sequence_probes = [
             },
             'TCP' : {
                 'window': 8192,
+                'flags': 'SA',
+                'options': [('MSS', 1460), ('WScale', 8), ('SAckOK', b''), ('Timestamp', (1455180, 0))],
             }
         },
         id='Packet_4'
@@ -153,6 +161,8 @@ sequence_probes = [
             },
             'TCP' : {
                 'window': 8192,
+                'flags': 'SA',
+                'options': [('MSS', 1460), ('WScale', 8), ('SAckOK', b''), ('Timestamp', (1455180, 0))],
             }
         },
         id='Packet_5'
@@ -195,5 +205,3 @@ def test_nmap_sequence_generation(device_under_test, window_field, tcp_options, 
 
     for field, value in response['TCP'].items():
         assert resp[TCP].getfieldval(field) == value
-
-    assert False
