@@ -601,34 +601,22 @@ int xdp_prog1(struct CTXTYPE *ctx) {
         // bpf_trace_printk("detect_nmap_probes %d", nmap_result);
         switch(nmap_result) {
             case TCP_NMAP_T1_P1: {
-                // return rc;
-                // Packet #1: window scale (10), NOP, MSS (1460), timestamp (TSval: 0xFFFFFFFF; TSecr: 0), SACK permitted. The window field is 1.
-        //       set(df, 1);
-        //       set(ttl, 128);
-        //         ip->ttl = 128;
-        // // //       set(ack, this+1);
-        //         u_int32_t ack_seq = tcp->ack_seq;
-        //         tcp->ack_seq = ack_seq + 1;
-        // // //       set(flags, ack|syn);
-        //         tcp->ack = 1;
-        //         tcp->syn = 1;
-                // u_int32_t options_len = tcp->doff*4 - sizeof(struct tcphdr);
-                // if ((void *)tcp + sizeof(struct tcphdr) + options_len > data_end)
+                // /* SEQ1 */
+                // if (nmap(seq1))
                 // {
-                //     bpf_trace_printk("TCP Options length is greater than the packet size");
-                //     break;
-                // }
-                // void *options_start = (void *) tcp + sizeof(struct tcphdr);
-                // void * cursor = options_start;
+                //     set(df, 1);
+                //     set(ttl, 128);
+                //     set(ack, this+1);
+                //     set(flags, ack|syn);
 
-        //      set(win, 8192);
-        //         tcp->TH_WIN = 8192;
-        // //      insert(wscale,8); we adjust from 10 to 8
-        //         *(u_int32_t *)(cursor) = 0x01080303;
-        // //      insert(mss,1460); should already be 1460?
-        //         *(u_int32_t *)(cursor + 4) = 0xb4050402;
-        //      insert(sackOK);
-        //      insert(timestamp);
+                //     set(win, 8192);
+                //     insert(mss,1460);
+                //     insert(wscale,8);
+                //     insert(sackOK);
+                //     insert(timestamp);
+
+                //     reply;
+                // }
 
                 // Fix TCP header
                 // Set Syn/Ack on the TCP header
