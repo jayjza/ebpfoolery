@@ -311,12 +311,34 @@ static inline uint8_t detect_nmap_probes(void* data_end, struct tcphdr* tcp, str
                 bpf_trace_printk("NMap TCP probe T2 packet detected");
                 return TCP_NMAP_T2_P1;
             }
-            // if (tcp->syn && tcp->urg && tcp->psh && tcp->fin) {
-            // if (tcp->syn == 0)
-
-
-                // bpf_trace_printk("NMap TCP probe packet 5 detected");
-                // return TCP_NMAP_T1_P5;
+            if ((flags == TCP_SYN | TCP_FIN | TCP_URG | TCP_PSH) &&
+                (ntohs(tcp->window) == 256) &&
+                (ntohs(ip->frag_off) & IP_DF) == 0)
+            {
+                bpf_trace_printk("NMap TCP probe T3 packet detected");
+                return TCP_NMAP_T3_P1;
+            }
+            if ((flags = TCP_ACK) &&
+                (ntohs(tcp->window) == 1024) &&
+                (ntohs(ip->frag_off) & IP_DF))
+            {
+                bpf_trace_printk("NMap TCP probe T4 packet detected");
+                return TCP_NMAP_T4_P1;
+            }
+            if ((flags = TCP_SYN) &&
+                (ntohs(tcp->window) == 31337) &&
+                (ntohs(ip->frag_off) & IP_DF) == 0)
+            {
+                bpf_trace_printk("NMap TCP probe T5 packet detected");
+                return TCP_NMAP_T5_P1;
+            }
+            if ((flags = TCP_ACK) &&
+                (ntohs(tcp->window) == 32768) &&
+                (ntohs(ip->frag_off) & IP_DF))
+            {
+                bpf_trace_printk("NMap TCP probe T6 packet detected");
+                return TCP_NMAP_T6_P1;
+            }
         }
 
     }
