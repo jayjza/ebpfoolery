@@ -134,11 +134,10 @@ def test_nmap_sequence_generation(device_under_test, window_field, tcp_options):
     """
     This test sends a sequence probe the same as nmap does and check that the response is correct
     """
-    tcp_probe_packet = Ether() / IP (dst=str(device_under_test.IP)) / TCP(sport=RandShort(), dport=RandShort(), flags='S', window=window_field, options=tcp_options)
+    tcp_probe_packet = Ether() / IP (dst=str(device_under_test.IP)) / TCP(sport=RandShort(), dport=12345, flags='S', window=window_field, options=tcp_options)
 
     print("Sending: {}".format(repr(tcp_probe_packet)))
     resp = srp1(tcp_probe_packet, iface=device_under_test.interface, timeout=2)        # TODO: Fix the interface name
     import pdb; pdb.set_trace()
     print(repr(resp))
-
     assert False
