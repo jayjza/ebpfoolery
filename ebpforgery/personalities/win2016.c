@@ -205,180 +205,6 @@ static inline void check_flags(struct tcphdr* tcp) {
     // Add more checks for other TCP flags as needed
 }
 
-static inline void check_options(struct tcphdr* tcp) {
-    // Check TCP options
-    // Assuming options start right after the TCP header
-    unsigned char* options = (unsigned char*)(tcp) + sizeof(struct tcphdr);
-    int is_probe_1_mss = 0;
-    int is_probe_1_sack = 0;
-    int is_probe_1_win_scale = 0;
-    int is_probe_1_timestamp = 0;
-    // Loop through TCP options
-    while ((options - (unsigned char*)(tcp)) < ((tcp->doff * 4) - sizeof(struct tcphdr))) {
-        // Extract the option kind
-        unsigned char optionKind = *options;
-
-        // Process the option kind as needed
-        switch (optionKind) {
-            case TCPOPT_NOP:
-                // No-operation option
-                break;
-
-            case TCPOPT_MAXSEG: {
-                // Maximum Segment Size option
-                unsigned char optionLength = *(options + 1);
-                if (optionLength == TCPOLEN_MAXSEG) {
-                    uint16_t maxSegmentSize = ntohs(*(uint16_t*)(options + 2));
-                    // bpf_trace_printk("Maximum Segment Size: " << maxSegmentSize << " bytes.");
-                    if (maxSegmentSize == 1460) {
-                        is_probe_1_mss = 1;
-                    }
-                }
-                break;
-            }
-
-            case TCPOPT_WINDOW_SCALE: {
-                // Window Scale option
-                unsigned char optionLength = *(options + 1);
-                if (optionLength == TCPOLEN_WINDOW) {
-                    uint8_t windowScale = *(uint8_t*)(options + 2);
-                    // std::cout << "Window Scale: " << static_cast<int>(windowScale) << "\n";
-                    if ((int)(windowScale) == 10) {
-                        is_probe_1_win_scale = 1;
-                    }
-                }
-                break;
-            }
-
-            case TCPOPT_SACK_PERMITTED: {
-                // Sack Permitted option
-                is_probe_1_sack = 1;
-            }
-
-            case TCPOPT_TIMESTAMP: {
-                // Timestamp option
-                unsigned char optionLength = *(options + 1);
-                if (optionLength == TCPOLEN_TIMESTAMP) {
-                    uint32_t timestampValue = ntohl(*(uint32_t*)(options + 2));
-                    uint32_t timestampEchoReply = ntohl(*(uint32_t*)(options + 6));
-                    if (timestampValue == (uint32_t)0xFFFFFFFF) {
-                        is_probe_1_timestamp = 1;
-                    }
-                    // is_probe_1_timestamp = true;
-                }
-            }
-
-            default:
-                // Handle unknown or unsupported options
-                break;
-        }
-
-        // Move to the next option
-        options += (options[1] > 0) ? options[1] : 1;
-    }
-
-    // if (is_probe_1_timestamp && is_probe_1_sack && is_probe_1_win_scale && is_probe_1_mss) {
-    //     bpf_trace_printk("FOUND PACKET 1 of the firt probe");
-    // }
-}
-
-static inline void check_options2(struct tcphdr* tcp, void* data_end) {
-    u_int32_t options_len = tcp->doff*4 - sizeof(struct tcphdr);
-
-    bpf_trace_printk("TCP Options length is %d and hdr %d", options_len, sizeof(struct tcphdr));
-
-    void *blah = (void *)tcp + sizeof(struct tcphdr) + options_len;
-    bpf_trace_printk("tcp start = %p, data_end = %p (%d))", blah, data_end, data_end - (void *) tcp);
-
-    if ((void *)tcp + sizeof(struct tcphdr) + options_len > data_end)
-    {
-        bpf_trace_printk("TCP Options length is greater than the packet size");
-        return;
-    }
-
-    void *options_start = (void *) tcp + sizeof(struct tcphdr);
-
-    void * cursor = options_start;
-    uint16_t i;
-
-    for (i = 0; i < TCP_MAX_OPTION_LEN; i++)
-    {
-        bpf_trace_printk("Running i = %d", i);
-        if (i >= options_len)
-        {
-            bpf_trace_printk("Reached end of TCP Options");
-            break;
-        }
-        if (cursor + 1 > data_end)
-        {
-            bpf_trace_printk("Error: boundary exceeded while parsing TCP Options");
-            break;
-        }
-
-        if (*(u8 *)(cursor) == TCPOPT_MAXSEG)
-        {
-            bpf_trace_printk("TCP Option Maximum Segment Size");
-            if (cursor + 4 > data_end)
-            {
-                bpf_trace_printk("Error: boundary exceeded while parsing TCP Option MSS");
-            }
-            else
-            {
-                u_int16_t mss = htons(*(uint16_t *)(cursor + 2));
-                bpf_trace_printk("MSS is = %d", mss);
-            }
-        }
-
-        cursor++;
-    }
-
-    // for (int i = 0; i < options_len; i++)
-    // {
-    //     bpf_trace_printk("TCP Options value %x", options + i);
-
-    //     if (options + i > data_end)
-    //         break;
-
-    //     u8 value = *((u8 *)(options + i));
-
-    //     switch (value)
-    //     {
-    //         case TCPOPT_NOP:
-    //             break;
-    //     //     case TCPOPT_MAXSEG:
-    //     //         bpf_trace_printk("TCP Option Maximum Segment Size");
-    //     //         break;
-    //     //     case TCPOPT_WINDOW_SCALE:
-    //     //         bpf_trace_printk("TCP Option Window Scale");
-    //     //         break;
-    //     //     case TCPOPT_SACK_PERMITTED:
-    //     //         bpf_trace_printk("TCP Option SACK Allowed");
-    //     //         break;
-    //     //     case TCPOPT_TIMESTAMP:
-    //     //         bpf_trace_printk("TCP Option Timestamp");
-    //     //         break;
-    //         default:
-    //             bpf_trace_printk("TCP Option Unknown");
-    //             break;
-    //     }
-
-    //     if (i > 2)
-    //         break;
-    //     // if (options + i > data_end)
-    //     // {
-    //     //     bpf_trace_printk("Invalid option positioon");
-    //     //     break;
-    //     // }
-    //     // u_int8_t val = *(options + i);
-    //     // bpf_trace_printk("TCP Options value %d", val);
-    //     // if (*(options + i) == 2)
-    //     //     bpf_trace_printk("Found MSS value");
-
-    // }
-
-}
-
-
 static inline uint8_t detect_nmap_probes(void* data_end, struct tcphdr* tcp) {
     u_int32_t options_len = tcp->doff*4 - sizeof(struct tcphdr);
 
@@ -816,6 +642,37 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 return XDP_TX;
             }
             case TCP_NMAP_T1_P5: {
+                // set(flags, ack|syn);
+                // set(win, 8192);
+                // insert(mss,1460);
+                // insert(wscale,8);
+                // insert(sackOK);
+                // insert(timestamp);
+
+                // Fix TCP header
+                // Set Syn/Ack on the TCP header
+                tcp->syn = 1;
+                tcp->ack = 1;
+                tcp->window = htons(8192);
+
+                // Set the TCP options
+                u_int32_t options_len = 20;
+                void *options_start = (void *) tcp + sizeof(struct tcphdr);
+                void * cursor = options_start;
+                if (cursor + 20 > data_end)
+                {
+                    bpf_trace_printk("Error: boundary exceeded while trying to set TCP Options");
+                    return DEFAULT_ACTION;
+                }
+                else
+                {
+                    (*(u_int32_t *)(cursor +  0)) = htonl(0x020405b4);
+                    (*(u_int32_t *)(cursor +  4)) = htonl(0x01030308);
+                    (*(u_int32_t *)(cursor +  8)) = htonl(0x0402080a);
+                    (*(u_int32_t *)(cursor + 12)) = htonl(0x00163244);
+                    (*(u_int32_t *)(cursor + 16)) = htonl(0xffffffff);
+                }
+
 
                 bpf_trace_printk("NMAP detection found probe 5 of test 1");
                 return XDP_TX;
@@ -832,7 +689,7 @@ int xdp_prog1(struct CTXTYPE *ctx) {
 
                 //     reply;
                 // }
-                
+
                 // Fix TCP header
                 // Set Syn/Ack on the TCP header
                 tcp->syn = 1;
