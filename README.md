@@ -52,6 +52,7 @@ tab completion.
 Once Python Poetry is installed. You can setup using:
 ```
 cd ebpforgery
+poetry config virtualenvs.options.system-site-packages true
 poetry install
 ```
 
@@ -69,3 +70,60 @@ If you would like to run the program using the virtualenv, but not in the shell,
 ```
 poetry run python3 ...
 ```
+
+
+POTENTIAL ISSUES:
+
+1. Missing BCC after above steps still
+
+Problem: In poetry env, you may not be able to access BCC and get the error:
+```
+(ebpforgery-py3.10) ➜  ebpforgery git:(main) ./ebpforged -p win2016 -i ens160
+Traceback (most recent call last):
+  File "/home/ubuntu/ebpforgery/ebpforge", line 23, in <module>
+    from ebpforgery import forge_ippers, AVAILABLE_PERSONALITIES
+  File "/home/ubuntu/ebpforgery/ebpforgery/__init__.py", line 1, in <module>
+    from bcc import BPF
+ModuleNotFoundError: No module named 'bcc'
+```
+
+Solution:
+In your venv: `poetry config virtualenvs.options.system-site-packages true`
+Using system working python3:
+```
+➜  ebpforgery git:(main) ✗ python3 -m site
+sys.path = [
+    '/home/j/ebpforgery',
+    '/usr/lib/python310.zip',
+    '/usr/lib/python3.10',
+    '/usr/lib/python3.10/lib-dynload',
+    '/usr/local/lib/python3.10/dist-packages',
+    '/usr/lib/python3/dist-packages',
+    '/usr/lib/python3/dist-packages/bcc-0.28.0+003b0037-py3.10.egg',
+]
+```
+Notice the `bcc-*.egg`.
+
+In your venv, run the same to see the difference:
+```
+(ebpforgery-py3.10) ➜  ebpforgery git:(main) ✗ python -m site
+sys.path = [
+    '/home/j/ebpforgery',
+    '/usr/lib/python310.zip',
+    '/usr/lib/python3.10',
+    '/usr/lib/python3.10/lib-dynload',
+    '/home/j/.cache/pypoetry/virtualenvs/ebpforgery-iDpkqNNH-py3.10/lib/python3.10/site-packages',
+]
+```
+
+We can take it further check using:
+```
+(ebpforgery-py3.10) ➜  ebpforgery git:(main) python3 -c "import bcc as _; print(_.__file__)"
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+ModuleNotFoundError: No module named 'bcc'
+(ebpforgery-py3.10) ➜  ebpforgery git:(main) exit
+➜  ebpforgery git:(main) python3 -c "import bcc as _; print(_.__file__)"
+/usr/lib/python3/dist-packages/bcc-0.28.0+bc9b43a0-py3.10.egg/bcc/__init__.py
+```
+Notice how the system find the files and displays its location

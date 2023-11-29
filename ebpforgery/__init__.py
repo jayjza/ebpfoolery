@@ -6,6 +6,7 @@ AVAILABLE_PERSONALITIES = ['win2016']
 
 def forge_ippers(personality, interface):
     flags = 0
+    flags |= BPF.XDP_FLAGS_SKB_MODE
     ret = "XDP_DROP"
     ctxtype = "xdp_md"
     maptype = "percpu_array"

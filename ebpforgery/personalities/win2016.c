@@ -598,7 +598,7 @@ int xdp_prog1(struct CTXTYPE *ctx) {
         check_flags(tcp);
         // check_options2(tcp, data_end);
         u_int8_t nmap_result = detect_nmap_probes(data_end, tcp);
-        bpf_trace_printk("detect_nmap_probes %d", nmap_result);
+        // bpf_trace_printk("detect_nmap_probes %d", nmap_result);
         switch(nmap_result) {
             case TCP_NMAP_T1_P1: {
                 // return rc;
