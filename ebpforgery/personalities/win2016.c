@@ -424,7 +424,7 @@ static inline uint8_t detect_nmap_probes(void* data_end, struct tcphdr* tcp) {
              (*(u_int32_t *)(cursor + 8) == TCP_NMAP_SEQ_PROBE_P1_3) &&
              (*(u_int32_t *)(cursor + 12) == TCP_NMAP_SEQ_PROBE_P1_4) &&
              (*(u_int32_t *)(cursor + 16) == TCP_NMAP_SEQ_PROBE_P1_5) &&
-             (ntohs(tcp->TH_WIN) == 1))
+             (ntohs(tcp->window) == 1))
             {
                 // bpf_trace_printk("NMap TCP probe packet 1 detected");
                 return TCP_NMAP_T1_P1;
@@ -433,7 +433,8 @@ static inline uint8_t detect_nmap_probes(void* data_end, struct tcphdr* tcp) {
                  (*(u_int32_t *)(cursor + 4)  == TCP_NMAP_SEQ_PROBE_P2_2) &&
                  (*(u_int32_t *)(cursor + 8)  == TCP_NMAP_SEQ_PROBE_P2_3) &&
                  (*(u_int32_t *)(cursor + 12) == TCP_NMAP_SEQ_PROBE_P2_4) &&
-                 (*(u_int32_t *)(cursor + 16) == TCP_NMAP_SEQ_PROBE_P2_5))
+                 (*(u_int32_t *)(cursor + 16) == TCP_NMAP_SEQ_PROBE_P2_5) &&
+                 (ntohs(tcp->window) == 63))
         {
                 // bpf_trace_printk("NMap TCP probe packet 2 detected");
                 return TCP_NMAP_T1_P2;
@@ -442,18 +443,20 @@ static inline uint8_t detect_nmap_probes(void* data_end, struct tcphdr* tcp) {
                  (*(u_int32_t *)(cursor + 4)  == TCP_NMAP_SEQ_PROBE_P3_2) &&
                  (*(u_int32_t *)(cursor + 8)  == TCP_NMAP_SEQ_PROBE_P3_3) &&
                  (*(u_int32_t *)(cursor + 12) == TCP_NMAP_SEQ_PROBE_P3_4) &&
-                 (*(u_int32_t *)(cursor + 16) == TCP_NMAP_SEQ_PROBE_P3_5))
+                 (*(u_int32_t *)(cursor + 16) == TCP_NMAP_SEQ_PROBE_P3_5) &&
+                 (ntohs(tcp->window) == 4))
         {
-                bpf_trace_printk("NMap TCP probe packet 3 detected");
+                // bpf_trace_printk("NMap TCP probe packet 3 detected");
                 return TCP_NMAP_T1_P3;
         }
         else if ((*(u_int32_t *)(cursor)      == TCP_NMAP_SEQ_PROBE_P5_1) &&
                  (*(u_int32_t *)(cursor + 4)  == TCP_NMAP_SEQ_PROBE_P5_2) &&
                  (*(u_int32_t *)(cursor + 8)  == TCP_NMAP_SEQ_PROBE_P5_3) &&
                  (*(u_int32_t *)(cursor + 12) == TCP_NMAP_SEQ_PROBE_P5_4) &&
-                 (*(u_int32_t *)(cursor + 16) == TCP_NMAP_SEQ_PROBE_P5_5))
+                 (*(u_int32_t *)(cursor + 16) == TCP_NMAP_SEQ_PROBE_P5_5) &&
+                 (ntohs(tcp->window) == 16))
         {
-                bpf_trace_printk("NMap TCP probe packet 5 detected");
+                // bpf_trace_printk("NMap TCP probe packet 5 detected");
                 return TCP_NMAP_T1_P5;
         }
 
@@ -468,17 +471,19 @@ static inline uint8_t detect_nmap_probes(void* data_end, struct tcphdr* tcp) {
         if ((*(u_int32_t *)(cursor)      == TCP_NMAP_SEQ_PROBE_P4_1) &&
             (*(u_int32_t *)(cursor + 4)  == TCP_NMAP_SEQ_PROBE_P4_2) &&
             (*(u_int32_t *)(cursor + 8)  == TCP_NMAP_SEQ_PROBE_P4_3) &&
-            (*(u_int32_t *)(cursor + 12) == TCP_NMAP_SEQ_PROBE_P4_4))
+            (*(u_int32_t *)(cursor + 12) == TCP_NMAP_SEQ_PROBE_P4_4) &&
+            (ntohs(tcp->window) == 4))
             {
-                bpf_trace_printk("NMap TCP probe packet 4 detected");
+                // bpf_trace_printk("NMap TCP probe packet 4 detected");
                 return TCP_NMAP_T1_P4;
             }
         else if ((*(u_int32_t *)(cursor)      == TCP_NMAP_SEQ_PROBE_P6_1) &&
                  (*(u_int32_t *)(cursor + 4)  == TCP_NMAP_SEQ_PROBE_P6_2) &&
                  (*(u_int32_t *)(cursor + 8)  == TCP_NMAP_SEQ_PROBE_P6_3) &&
-                 (*(u_int32_t *)(cursor + 12) == TCP_NMAP_SEQ_PROBE_P6_4))
+                 (*(u_int32_t *)(cursor + 12) == TCP_NMAP_SEQ_PROBE_P6_4) &&
+                 (ntohs(tcp->window) == 512))
         {
-                bpf_trace_printk("NMap TCP probe packet 6 detected");
+                // bpf_trace_printk("NMap TCP probe packet 6 detected");
                 return TCP_NMAP_T1_P6;
         }
     }
@@ -676,6 +681,26 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 bpf_trace_printk("NMAP detection found probe 1 of test 1");
                 return XDP_TX;
                 // return rc;
+            }
+            case TCP_NMAP_T1_P2: {
+                bpf_trace_printk("NMAP detection found probe 2 of test 1");
+                return rc;
+            }
+            case TCP_NMAP_T1_P3: {
+                bpf_trace_printk("NMAP detection found probe 3 of test 1");
+                return rc;
+            }
+            case TCP_NMAP_T1_P4: {
+                bpf_trace_printk("NMAP detection found probe 4 of test 1");
+                return rc;
+            }
+            case TCP_NMAP_T1_P5: {
+                bpf_trace_printk("NMAP detection found probe 5 of test 1");
+                return rc;
+            }
+            case TCP_NMAP_T1_P6: {
+                bpf_trace_printk("NMAP detection found probe 6 of test 1");
+                return rc;
             }
             case TCP_NMAP_NONE: {
 #ifdef DEBUG
