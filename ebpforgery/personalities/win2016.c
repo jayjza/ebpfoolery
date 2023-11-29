@@ -460,9 +460,6 @@ int xdp_prog1(struct CTXTYPE *ctx) {
         // bpf_trace_printk("detect_nmap_probes %d", nmap_result);
         switch(nmap_result) {
             case TCP_NMAP_T1_P1: {
-                // /* SEQ1 */
-                // if (nmap(seq1))
-                // {
                 //     set(df, 1);
                 //     set(ttl, 128);
                 //     set(ack, this+1);
@@ -473,9 +470,6 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 //     insert(wscale,8);
                 //     insert(sackOK);
                 //     insert(timestamp);
-
-                //     reply;
-                // }
 
                 // Fix TCP header
                 // Set Syn/Ack on the TCP header
@@ -708,7 +702,14 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 // Set Syn/Ack on the TCP header
                 tcp->syn = 1;
                 tcp->ack = 1;
+
+                // TODO: We need some random sequence number for the return
                 tcp->window = htons(8192);
+
+                // Swap src/dst TCP
+                uint16_t src_tcp_port = tcp->source;
+                tcp->source = tcp->dest;
+                tcp->dest = src_tcp_port;
 
                 // Set the TCP options
                 u_int32_t options_len = 20;
@@ -728,7 +729,19 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                     (*(u_int32_t *)(cursor + 16)) = htonl(0xffffffff);
                 }
 
+                update_ip_checksum(tcp, sizeof(struct tcphdr) + options_len, &tcp->check);
 
+                // Update the IP packet
+
+                // Swap src/dst IP
+                uint32_t src_ip = ip->saddr;
+                ip->saddr = ip->daddr;
+                ip->daddr = src_ip;
+                // Recalculate IP checksum
+                update_ip_checksum(ip, sizeof(struct iphdr), &ip->check);
+
+                // Update the ethernet packet
+                swap_mac((uint8_t *)eth->h_source, (uint8_t *)eth->h_dest);
                 bpf_trace_printk("NMAP detection found probe 5 of test 1");
                 return XDP_TX;
             }
