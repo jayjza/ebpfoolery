@@ -854,6 +854,23 @@ int xdp_prog1(struct CTXTYPE *ctx) {
             }
             case TCP_NMAP_T5_P1:
             {
+                // // Since we don't have options in the packet anymore we need to chop it off.
+                // if (bpf_xdp_adjust_tail(ctx, 0 - 20))
+                // {
+                //     bpf_trace_printk("Error: Failed to remote options from packet.");
+                //     return DEFAULT_ACTION;
+                // }
+                // void *data = (void *)(long)ctx->data;
+                // void *data_end = (void *)(long)ctx->data_end;
+
+                // if (data + sizeof(struct ethhdr) + sizeof(struct iphdr) + sizeof(struct tcphdr) > data_end)
+                // {
+                //     bpf_trace_printk("Error: Packet modification for T5 response failed.");
+                //     return DEFAULT_ACTION;
+                // }
+                // eth = data;
+                // ip = data + sizeof(struct ethhdr);
+                // tcp = data  + sizeof(struct ethhdr) + sizeof(struct iphdr);
                 // Update TCP packet
                 tcp->window = htons(0);
                 tcp->ack_seq = htonl(ntohl(tcp->seq) + 1);
@@ -862,13 +879,12 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 tcp->rst = 1;
                 tcp->syn = 0;
                 tcp->doff = 5;
+                tcp->check = 0;
 
                 // Swap src/dst TCP
                 uint16_t src_tcp_port = tcp->source;
                 tcp->source = tcp->dest;
                 tcp->dest = src_tcp_port;
-
-                // TODO we need to drop the "options" from the packet
 
                 update_ip_checksum(tcp, sizeof(struct tcphdr), &tcp->check);
 
@@ -876,7 +892,7 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 // Set IP don't fragment
                 ip->frag_off = ip->frag_off | ntohs(IP_DF);
                 ip->ttl = 128;
-                // ip->tot_len = 40;
+                ip->tot_len = htons(40);
                 // Swap src/dst IP
                 uint32_t src_ip = ip->saddr;
                 ip->saddr = ip->daddr;
@@ -887,14 +903,14 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 // Update the ethernet packet
                 swap_mac((uint8_t *)eth->h_source, (uint8_t *)eth->h_dest);
 
-                // u_int32_t options_len = 20;
-                // // Since we don't have options in the packet anymore we need to chop it off.
-                // if (bpf_xdp_adjust_tail(ctx, 0 - options_len))
-                // {
-                //     bpf_trace_printk("Error: Failed to remote options from packet.");
-                //     return DEFAULT_ACTION;
-                // }
+                // Since we don't have options in the packet anymore we need to chop it off.
+                if (bpf_xdp_adjust_tail(ctx, 0 - 20))
+                {
+                    bpf_trace_printk("Error: Failed to remote options from packet.");
+                    return DEFAULT_ACTION;
+                }
 
+                bpf_trace_printk("Sending TCP_NMAP_T5_P1");
                 return XDP_TX;
             }
             case TCP_NMAP_T2_P1:
