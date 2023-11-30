@@ -603,6 +603,8 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 ip->frag_off = ip->frag_off | ntohs(IP_DF);
                 // Set TTL to 128
                 ip->ttl = 128;
+                // Set the IP identification field
+                ip->id = htons((*ip_id));
 
                 // Swap src/dst IP
                 uint32_t src_ip = ip->saddr;
