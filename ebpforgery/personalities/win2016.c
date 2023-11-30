@@ -8,6 +8,10 @@
 #include <linux/icmp.h>
 #include <net/ip.h>
 
+// BPF_TABLE(, uint32_t, long, dropcnt, 256);
+// BPF_ARRAY(counter, uint64_t, 1);
+BPF_PERCPU_ARRAY(ipid, uint32_t, 1);
+
 #define DEFAULT_ACTION XDP_PASS
 // #define DEBUG 1
 
@@ -528,6 +532,8 @@ int xdp_prog1(struct CTXTYPE *ctx) {
         u_int8_t nmap_result = detect_nmap_probes(data_end, tcp, ip);
         u64 current_time = bpf_ktime_get_ns();
         u_int32_t timestampValue = (uint32_t)(current_time/1000000);
+        uint32_t key = 0;
+        uint32_t *value;
 #ifdef DEBUG
         bpf_trace_printk("Timestamp: %d", timestampValue);
         bpf_trace_printk("detect_nmap_probes %d", nmap_result);
@@ -596,6 +602,13 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 uint32_t src_ip = ip->saddr;
                 ip->saddr = ip->daddr;
                 ip->daddr = src_ip;
+
+                value = ipid.lookup(&key);
+                if (value) {
+                    __sync_fetch_and_add(value, 1);
+                    ip->id = value;
+                }
+
                 // Recalculate IP checksum
                 update_ip_checksum(ip, sizeof(struct iphdr), &ip->check);
 
@@ -661,6 +674,12 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 uint32_t src_ip = ip->saddr;
                 ip->saddr = ip->daddr;
                 ip->daddr = src_ip;
+
+                value = ipid.lookup(&key);
+                if (value) {
+                    __sync_fetch_and_add(value, 1);
+                    ip->id = value;
+                }
                 // Recalculate IP checksum
                 update_ip_checksum(ip, sizeof(struct iphdr), &ip->check);
 
@@ -710,6 +729,12 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 uint32_t src_ip = ip->saddr;
                 ip->saddr = ip->daddr;
                 ip->daddr = src_ip;
+
+                value = ipid.lookup(&key);
+                if (value) {
+                    __sync_fetch_and_add(value, 1);
+                    ip->id = value;
+                }
                 // Recalculate IP checksum
                 update_ip_checksum(ip, sizeof(struct iphdr), &ip->check);
 
@@ -759,6 +784,12 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 uint32_t src_ip = ip->saddr;
                 ip->saddr = ip->daddr;
                 ip->daddr = src_ip;
+
+                value = ipid.lookup(&key);
+                if (value) {
+                    __sync_fetch_and_add(value, 1);
+                    ip->id = value;
+                }
                 // Recalculate IP checksum
                 update_ip_checksum(ip, sizeof(struct iphdr), &ip->check);
 
@@ -830,6 +861,12 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 uint32_t src_ip = ip->saddr;
                 ip->saddr = ip->daddr;
                 ip->daddr = src_ip;
+
+                value = ipid.lookup(&key);
+                if (value) {
+                    __sync_fetch_and_add(value, 1);
+                    ip->id = value;
+                }
                 // Recalculate IP checksum
                 update_ip_checksum(ip, sizeof(struct iphdr), &ip->check);
 
@@ -887,6 +924,12 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 uint32_t src_ip = ip->saddr;
                 ip->saddr = ip->daddr;
                 ip->daddr = src_ip;
+
+                value = ipid.lookup(&key);
+                if (value) {
+                    __sync_fetch_and_add(value, 1);
+                    ip->id = value;
+                }
                 // Recalculate IP checksum
                 update_ip_checksum(ip, sizeof(struct iphdr), &ip->check);
 
@@ -945,6 +988,12 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 uint32_t src_ip = ip->saddr;
                 ip->saddr = ip->daddr;
                 ip->daddr = src_ip;
+
+                value = ipid.lookup(&key);
+                if (value) {
+                    __sync_fetch_and_add(value, 1);
+                    ip->id = value;
+                }
                 // Recalculate IP checksum
                 update_ip_checksum(ip, sizeof(struct iphdr), &ip->check);
 
@@ -999,6 +1048,12 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 uint32_t src_ip = ip->saddr;
                 ip->saddr = ip->daddr;
                 ip->daddr = src_ip;
+
+                value = ipid.lookup(&key);
+                if (value) {
+                    __sync_fetch_and_add(value, 1);
+                    ip->id = value;
+                }
                 // Recalculate IP checksum
                 update_ip_checksum(ip, sizeof(struct iphdr), &ip->check);
 
