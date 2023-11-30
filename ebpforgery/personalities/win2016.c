@@ -127,8 +127,7 @@
 
 #define NMAP_UDP_PROBE_DATA_LEN 300
 
-
-BPF_TABLE(MAPTYPE, uint32_t, long, dropcnt, 256);
+BPF_PERCPU_ARRAY(ip_identification, u_int32_t, 1);
 
 #define MAX_BUFFER_SIZE 512
 u8 buffer[MAX_BUFFER_SIZE];                 //!< A temporary buffer where we can store some data when processing.
@@ -455,6 +454,19 @@ int xdp_prog1(struct CTXTYPE *ctx) {
     bpf_trace_printk("Ether Proto: 0x%x", h_proto);
 #endif
 
+    u_int32_t ip_id_idx = 0;
+    u_int32_t *ip_id = ip_identification.lookup(&ip_id_idx);
+    // Initialize the identifier with a pseudo-random value
+    if (!ip_id)
+    {
+        return DEFAULT_ACTION;
+    }
+    if (*ip_id == 0) {
+        *ip_id = bpf_get_prandom_u32();
+    }
+    // We need to increment the value for each packet.
+    (*ip_id)++;
+
     struct iphdr *ip = data + sizeof(*eth);
 
 #ifdef DEBUG
@@ -656,6 +668,8 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 ip->frag_off = ip->frag_off | ntohs(IP_DF);
                 // Set TTL to 128
                 ip->ttl = 128;
+                // Set the IP identification field
+                ip->id = htons((*ip_id));
 
                 // Swap src/dst IP
                 uint32_t src_ip = ip->saddr;
@@ -706,6 +720,9 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 update_ip_checksum(tcp, sizeof(struct tcphdr) + options_len, &tcp->check);
 
                 // Update the IP packet
+                // Set the IP identification field
+                ip->id = htons((*ip_id));
+
                 // Swap src/dst IP
                 uint32_t src_ip = ip->saddr;
                 ip->saddr = ip->daddr;
@@ -755,6 +772,9 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 update_ip_checksum(tcp, sizeof(struct tcphdr) + options_len, &tcp->check);
 
                 // Update the IP packet
+                // Set the IP identification field
+                ip->id = htons((*ip_id));
+
                 // Swap src/dst IP
                 uint32_t src_ip = ip->saddr;
                 ip->saddr = ip->daddr;
@@ -826,6 +846,9 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 update_ip_checksum(tcp, sizeof(struct tcphdr) + options_len, &tcp->check);
 
                 // Update the IP packet
+                // Set the IP identification field
+                ip->id = htons((*ip_id));
+
                 // Swap src/dst IP
                 uint32_t src_ip = ip->saddr;
                 ip->saddr = ip->daddr;
@@ -882,6 +905,8 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 update_ip_checksum(tcp, sizeof(struct tcphdr) + options_len, &tcp->check);
 
                 // Update the IP packet
+                // Set the IP identification field
+                ip->id = htons((*ip_id));
 
                 // Swap src/dst IP
                 uint32_t src_ip = ip->saddr;
@@ -941,6 +966,9 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 update_ip_checksum(tcp, sizeof(struct tcphdr) + options_len, &tcp->check);
 
                 // Update the IP packet
+                // Set the IP identification field
+                ip->id = htons((*ip_id));
+
                 // Swap src/dst IP
                 uint32_t src_ip = ip->saddr;
                 ip->saddr = ip->daddr;
@@ -995,6 +1023,9 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 ip->frag_off = ip->frag_off | ntohs(IP_DF);
                 ip->ttl = 128;
                 ip->tot_len = htons(40);
+                // Set the IP identification field
+                ip->id = htons((*ip_id));
+
                 // Swap src/dst IP
                 uint32_t src_ip = ip->saddr;
                 ip->saddr = ip->daddr;
@@ -1176,6 +1207,8 @@ int xdp_prog1(struct CTXTYPE *ctx) {
 
         // Set TTL to 128
         ip->ttl = 128;
+        // Set the IP identification field
+       ip->id = htons((*ip_id));
 
         // Swap src/dst IP
         uint32_t src_ip = ip->saddr;
@@ -1225,6 +1258,8 @@ int xdp_prog1(struct CTXTYPE *ctx) {
 
         // Set TTL to 128
         ip->ttl = 128;
+        // Set the IP identification field
+        ip->id = htons((*ip_id));
 
         // Swap src/dst IP
         uint32_t src_ip = ip->saddr;
