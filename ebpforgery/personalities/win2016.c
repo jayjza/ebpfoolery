@@ -560,6 +560,7 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 tcp->syn = 1;
                 tcp->ack = 1;
                 tcp->ece = 1;
+                tcp->cwr = 0;
                 tcp->urg_ptr = 0;
                 tcp->res1 = 0;
 
