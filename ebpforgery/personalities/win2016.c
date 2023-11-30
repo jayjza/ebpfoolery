@@ -115,6 +115,9 @@
 #define TCP_NMAP_T7_PROBES_5 0x02040000
 
 
+#define NMAP_UDP_PROBE_DATA_LEN 300
+
+
 BPF_TABLE(MAPTYPE, uint32_t, long, dropcnt, 256);
 
 #define MAX_BUFFER_SIZE 512
@@ -920,6 +923,12 @@ int xdp_prog1(struct CTXTYPE *ctx) {
     // Handle UDP traffic
     else if (ip->protocol == IPPROTO_UDP)
     {
+        // struct udphdr {
+        // 	__be16	source;
+        // 	__be16	dest;
+        // 	__be16	len;
+        // 	__sum16	check;
+        // };
         /*
             udp_unreach {
                 reply yes;
@@ -944,6 +953,13 @@ int xdp_prog1(struct CTXTYPE *ctx) {
             return DEFAULT_ACTION;
         }
         struct udphdr *udp = data + sizeof(*eth) + sizeof(*ip);
+        u_int32_t udp_data_len = htons(udp->len) - sizeof(struct udphdr);
+        if (udp_data_len != NMAP_UDP_PROBE_DATA_LEN)    // This is not the NMAP probe
+        {
+            return DEFAULT_ACTION;
+        }
+
+        bpf_trace_printk("UPD Data Length = %d", udp_data_len);
 
         // TODO check if this port is open before doing this.
         // We probably need to use a BPF map to do this
@@ -1015,7 +1031,18 @@ int xdp_prog1(struct CTXTYPE *ctx) {
         icmp->code = ICMP_PORT_UNREACH;
         icmp->checksum = 0;
         icmp->un.gateway = 0;
-        update_ip_checksum(icmp, sizeof(struct icmphdr), &icmp->checksum);
+
+        u_int32_t pkt_len = sizeof(struct icmphdr) + sizeof(struct iphdr) + sizeof(struct udphdr) + NMAP_UDP_PROBE_DATA_LEN;
+        // u_int32_t pkt_len = ((struct iphdr *)old_ip_header)->tot_len + sizeof(struct icmphdr);
+        if ( ((void*)icmp) + pkt_len > data_end)
+        {
+             bpf_trace_printk("packet length exceeds data_end");
+             return DEFAULT_ACTION;
+        }
+        // update_ip_checksum(icmp, pkt_len, &icmp->checksum);
+        update_ip_checksum(icmp, pkt_len, &icmp->checksum);
+
+        bpf_trace_printk("ICMP checksum is %x", icmp->checksum);
 
         // Update the existing IP header
         ip->protocol = IPPROTO_ICMP;
