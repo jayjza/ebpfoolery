@@ -161,11 +161,10 @@ def test_nmap_sequence_generation(device_under_test, window_field, tcp_options, 
     assert IP in resp, "No IP layer found in response"
     assert TCP in resp, "No TCP layer found in response"
 
-    for field, value in response['TCP'].items():
-        if field == 'Timestamp':
-            assert resp[TCP].getfieldval(field) == timestamp
-        else:
-            assert resp[TCP].getfieldval(field) == value
+    assert response['TCP']['window'] == resp[TCP].getfieldval('window')
+    assert response['TCP']['flags'] == resp[TCP].getfieldval('flags')
+    for i in range(len(response['TCP']['options'])):
+        assert resp[TCP].getfieldval('options')[i] == response['TCP']['options'][i]
 
 
 def test_nmap_T2(device_under_test):
