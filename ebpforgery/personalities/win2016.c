@@ -546,25 +546,16 @@ int xdp_prog1(struct CTXTYPE *ctx) {
 #endif
         switch(nmap_result) {
             case TCP_NMAP_ECN: {
-                // ECN(R=Y%DF=Y%T=7B-85%TG=80%W=2000%O=M5B4NW8NNS%CC=Y%Q=)
-                // R = Y (whether we respond to the probe)
-                // DF = Y (Dont fragment bit is set)
-                // T = 7B-85 (TTL)
-                // TG = 80 (TTL guess)
-                // W = 2000  (window field size)
-                // O = M5B4NW8NNS (Options: MSS 1460, Nop, WS 8, Nop, Nop, SAckPermitted)
-                // CC = Y (Only the ECE bit is set (not CWR). This host supports ECN.)
-                // Q = (empty)
-                /*
+                /* ECN Test
                 {
-              set(df, 1);
-              set(ttl, 128);
-              set(win, 8192);
-              set(flags, syn|ack|ece);
-              insert(mss, 1460);
-              insert(wscale, 8);
-              insert(sackOK);
-              reply;
+                set(df, 1);
+                set(ttl, 128);
+                set(win, 8192);
+                set(flags, syn|ack|ece);
+                insert(mss, 1460);
+                insert(wscale, 8);
+                insert(sackOK);
+                reply;
                  }
                 */
                 // Fix TCP header
@@ -619,16 +610,23 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 return XDP_TX;
             }
             case TCP_NMAP_T1_P1: {
-                //     set(df, 1);
-                //     set(ttl, 128);
-                //     set(ack, this+1);
-                //     set(flags, ack|syn);
+                /* SEQ1
+                if (nmap(seq1))
+                {
+                    set(df, 1);
+                    set(ttl, 128);
+                    set(ack, this+1);
+                    set(flags, ack|syn);
 
-                //     set(win, 8192);
-                //     insert(mss,1460);
-                //     insert(wscale,8);
-                //     insert(sackOK);
-                //     insert(timestamp);
+                    set(win, 8192);
+                    insert(mss,1460);
+                    insert(wscale,8);
+                    insert(sackOK);
+                    insert(timestamp);
+
+                    reply;
+                }
+                */
 
                 // Fix TCP header
                 // Set Syn/Ack on the TCP header
@@ -687,6 +685,19 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 // return rc;
             }
             case TCP_NMAP_T1_P2: {
+                /*
+                if (nmap(seq2))
+                {
+                    set(flags, ack|syn);
+                    set(win, 8192);
+                    insert(mss,1460);
+                    insert(wscale,8);
+                    insert(sackOK);
+                    insert(timestamp);
+
+                    reply;
+                }
+                */
                 // Fix TCP header
                 // Set Syn/Ack on the TCP header
                 tcp->syn = 1;
@@ -739,6 +750,18 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 return XDP_TX;
             }
             case TCP_NMAP_T1_P3: {
+                /*
+                if (option(nop) && option(wscale) && option(mss))
+                {
+                    set(flags, ack|syn);
+                    set(win, 8192);
+                    insert(mss,1460);
+                    insert(wscale,8);
+                    insert(timestamp);
+
+                    reply;
+                }
+                */
                 // Fix TCP header
                 // Set Syn/Ack on the TCP header
                 tcp->syn = 1;
@@ -791,6 +814,19 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 return XDP_TX;
             }
             case TCP_NMAP_T1_P4: {
+                /*
+                if (option(sackOK) && option(wscale) && option(eol))
+                {
+                    set(flags, ack|syn);
+                    set(win, 8192);
+                    insert(mss,1460);
+                    insert(wscale,8);
+                    insert(sackOK);
+                    insert(timestamp);
+
+                    reply;
+                }
+                */
                 // For probe4 we need to make the buffer slightly bigger
                 if (bpf_xdp_adjust_tail(ctx, 4))
                 {
@@ -865,13 +901,19 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 return XDP_TX;
             }
             case TCP_NMAP_T1_P5: {
-                // set(flags, ack|syn);
-                // set(win, 8192);
-                // insert(mss,1460);
-                // insert(wscale,8);
-                // insert(sackOK);
-                // insert(timestamp);
+                /* SEQ5
+                if (option(mss) && option(sackOK) && option(wscale) && option(eol))
+                {
+                    set(flags, ack|syn);
+                    set(win, 8192);
+                    insert(mss,1460);
+                    insert(wscale,8);
+                    insert(sackOK);
+                    insert(timestamp);
 
+                    reply;
+                }
+                */
                 // Fix TCP header
                 // Set Syn/Ack on the TCP header
                 tcp->syn = 1;
@@ -987,23 +1029,6 @@ int xdp_prog1(struct CTXTYPE *ctx) {
             }
             case TCP_NMAP_T5_P1:
             {
-                // // Since we don't have options in the packet anymore we need to chop it off.
-                // if (bpf_xdp_adjust_tail(ctx, 0 - 20))
-                // {
-                //     bpf_trace_printk("Error: Failed to remote options from packet.");
-                //     return DEFAULT_ACTION;
-                // }
-                // void *data = (void *)(long)ctx->data;
-                // void *data_end = (void *)(long)ctx->data_end;
-
-                // if (data + sizeof(struct ethhdr) + sizeof(struct iphdr) + sizeof(struct tcphdr) > data_end)
-                // {
-                //     bpf_trace_printk("Error: Packet modification for T5 response failed.");
-                //     return DEFAULT_ACTION;
-                // }
-                // eth = data;
-                // ip = data + sizeof(struct ethhdr);
-                // tcp = data  + sizeof(struct ethhdr) + sizeof(struct iphdr);
                 // Update TCP packet
                 tcp->window = htons(0);
                 tcp->ack_seq = htonl(ntohl(tcp->seq) + 1);
@@ -1065,11 +1090,6 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 return XDP_PASS;
             }
         }
-
-
-        // Access the window size field
-
-    // printf("Window Size: %d bytes.\n", windowSize);
     }
 
     // Handle UDP traffic
