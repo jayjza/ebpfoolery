@@ -526,7 +526,8 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 tcp->ack = 1;
 
                 tcp->ack_seq = htonl(ntohl(tcp->seq) + 1);
-                // TODO: We need some random sequence number for the return
+                tcp->seq = htonl(bpf_get_prandom_u32());       // Generate a random sequence number for TCP
+                bpf_trace_printk("TCP Sequence NR %d", tcp->seq);
                 tcp->window = htons(8192);
 
                 // Swap src/dst TCP
@@ -579,7 +580,8 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 tcp->syn = 1;
                 tcp->ack = 1;
 
-                // TODO: We need some random sequence number for the return
+                tcp->seq = htonl(bpf_get_prandom_u32());       // Generate a random sequence number for TCP
+                bpf_trace_printk("TCP Sequence NR %d", tcp->seq);
                 tcp->window = htons(8192);
 
                 // Swap src/dst TCP
@@ -627,7 +629,8 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 tcp->syn = 1;
                 tcp->ack = 1;
 
-                // TODO: We need some random sequence number for the return
+                tcp->seq = htonl(bpf_get_prandom_u32());       // Generate a random sequence number for TCP
+                bpf_trace_printk("TCP Sequence NR %d", tcp->seq);
                 tcp->window = htons(8192);
 
                 // Swap src/dst TCP
@@ -696,7 +699,8 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 tcp->syn = 1;
                 tcp->ack = 1;
 
-                // TODO: We need some random sequence number for the return
+                tcp->seq = htonl(bpf_get_prandom_u32());       // Generate a random sequence number for TCP
+                bpf_trace_printk("TCP Sequence NR %d", tcp->seq);
                 tcp->window = htons(8192);
 
                 // Swap src/dst TCP
@@ -752,7 +756,8 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 tcp->syn = 1;
                 tcp->ack = 1;
 
-                // TODO: We need some random sequence number for the return
+                tcp->seq = htonl(bpf_get_prandom_u32());       // Generate a random sequence number for TCP
+                bpf_trace_printk("TCP Sequence NR %d", tcp->seq);
                 tcp->window = htons(8192);
 
                 // Swap src/dst TCP
@@ -812,7 +817,8 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 tcp->syn = 1;
                 tcp->ack = 1;
 
-                // TODO: We need some random sequence number for the return
+                tcp->seq = htonl(bpf_get_prandom_u32());       // Generate a random sequence number for TCP
+                bpf_trace_printk("TCP Sequence NR %d", tcp->seq);
                 tcp->window = htons(8192);
 
                 // Swap src/dst TCP
