@@ -1,47 +1,11 @@
+import time
+import pytest
+import struct
+from scapy.all import *
 
-# #! /usr/bin/env python
-# from scapy.all import *
-
-
-# # DST_IP="192.168.5.201"        # Bird
-# # DST_IP = "192.168.5.47"         # ebpf
-# # DST_IP = "192.168.5.57"         # win2016
-# DST_IP = "192.168.50.1"         # ebpf - test
-
-
-# tcp_options1 = [
-#                 ('WScale', 10),
-#                 ('NOP', b''),
-#                 ('MSS', struct.pack('>H', 1460)),
-#                 ('Timestamp', (4294967295, 0)),
-#                 ('SAckOK', b''),
-# ]
-
-# tcp_packet1 = Ether() / IP (dst=DST_IP) / TCP(sport=RandShort(), dport=510, flags='S', options=tcp_options1)
-
-# print("Sending {}".format(repr(tcp_packet1)))
-
-# resp = srp1(tcp_packet1, iface="ens192", timeout=1)
-
-# print(repr(resp))
-
-
-# # Packet #2: MSS (1400), window scale (0), SACK permitted, timestamp (TSval: 0xFFFFFFFF; TSecr: 0), EOL. The window field is 63.
-# tcp_options2 = [
-#                 ('MSS', struct.pack('>H', 1400)),
-#                 ('WScale', 0),
-#                 ('SAckOK', b''),
-#                 ('Timestamp', (4294967295, 0)),
-#                 ('EOL', b''),
-# ]
-
-# tcp_packet2 = Ether() / IP (dst=DST_IP) / TCP(sport=RandShort(), dport=510, flags='S', options=tcp_options2, window=63)
-
-# print("Sending {}".format(repr(tcp_packet2)))
-
-# resp = srp1(tcp_packet2, iface="ens192", timeout=1)
-
-# print(repr(resp))
+def current_milli_time():
+    # return round(time.time() * 1000)
+    return time.time_ns() / 1000000
 
 # Packet #1: window scale (10), NOP, MSS (1460), timestamp (TSval: 0xFFFFFFFF; TSecr: 0), SACK permitted. The window field is 1.
 
@@ -54,12 +18,6 @@
 # Packet #5: MSS (536), SACK permitted, Timestamp (TSval: 0xFFFFFFFF; TSecr: 0), window scale (10), EOL. The window field is 16.
 
 # Packet #6: MSS (265), SACK permitted, Timestamp (TSval: 0xFFFFFFFF; TSecr: 0). The window field is 512.
-
-import pytest
-import struct
-from scapy.all import *
-
-
 
 sequence_probes = [
     pytest.param(           # Packet #1: window scale (10), NOP, MSS (1460), timestamp (TSval: 0xFFFFFFFF; TSecr: 0), SACK permitted. The window field is 1.
@@ -78,7 +36,7 @@ sequence_probes = [
             'TCP' : {
                 'window': 8192,
                 'flags': 'SA',
-                'options': [('MSS', 1460), ('NOP', None), ('WScale', 8), ('SAckOK', b''), ('Timestamp', (1454660, 4294967295))],
+                'options': [('MSS', 1460), ('NOP', None), ('WScale', 8), ('SAckOK', b'')],
             }
         },
         id='Packet_1'
@@ -99,7 +57,7 @@ sequence_probes = [
             'TCP' : {
                 'window': 8192,
                 'flags': 'SA',
-                'options': [('MSS', 1460), ('NOP', None), ('WScale', 8), ('SAckOK', b''), ('Timestamp', (1454660, 4294967295))],
+                'options': [('MSS', 1460), ('NOP', None), ('WScale', 8), ('SAckOK', b'')],
             }
         },
         id='Packet_2'
@@ -121,7 +79,7 @@ sequence_probes = [
             'TCP' : {
                 'window': 8192,
                 'flags': 'SA',
-                'options': [('MSS', 1460), ('NOP', None), ('WScale', 8), ('NOP', None), ('NOP', None), ('Timestamp', (1454870, 4294967295))],
+                'options': [('MSS', 1460), ('NOP', None), ('WScale', 8), ('NOP', None), ('NOP', None)],
             }
         },
         id='Packet_3'
@@ -141,7 +99,7 @@ sequence_probes = [
             'TCP' : {
                 'window': 8192,
                 'flags': 'SA',
-                'options': [('MSS', 1460), ('NOP', None), ('WScale', 8), ('SAckOK', b''), ('Timestamp', (1455180, 0))],
+                'options': [('MSS', 1460), ('NOP', None), ('WScale', 8), ('SAckOK', b'')],
             }
         },
         id='Packet_4'
@@ -162,7 +120,7 @@ sequence_probes = [
             'TCP' : {
                 'window': 8192,
                 'flags': 'SA',
-                'options': [('MSS', 1460), ('WScale', 8), ('SAckOK', b''), ('Timestamp', (1455180, 0))],
+                'options': [('MSS', 1460), ('NOP', None), ('WScale', 8), ('SAckOK', b'')],
             }
         },
         id='Packet_5'
@@ -181,13 +139,12 @@ sequence_probes = [
             'TCP' : {
                 'window': 8192,
                 'flags': 'SA',
-                'options': [('MSS', 1460), ('SAckOK', b''), ('Timestamp', (1455180, 0))],
+                'options': [('MSS', 1460), ('SAckOK', b'')],
             }
         },
         id='Packet_6'
     ),
 ]
-
 
 @pytest.mark.parametrize('window_field, tcp_options, response', sequence_probes)
 def test_nmap_sequence_generation(device_under_test, window_field, tcp_options, response):
@@ -197,6 +154,7 @@ def test_nmap_sequence_generation(device_under_test, window_field, tcp_options, 
     tcp_probe_packet = Ether() / IP (dst=str(device_under_test.IP)) / TCP(sport=RandShort(), dport=12345, flags='S', window=window_field, options=tcp_options)
 
     print("Sending: {}".format(repr(tcp_probe_packet)))
+    timestamp = current_milli_time()
     resp = srp1(tcp_probe_packet, iface=device_under_test.interface, timeout=1)
     print(repr(resp))
 
@@ -204,7 +162,11 @@ def test_nmap_sequence_generation(device_under_test, window_field, tcp_options, 
     assert TCP in resp, "No TCP layer found in response"
 
     for field, value in response['TCP'].items():
-        assert resp[TCP].getfieldval(field) == value
+        if field == 'Timestamp':
+            assert resp[TCP].getfieldval(field) == timestamp
+        else:
+            assert resp[TCP].getfieldval(field) == value
+
 
 def test_nmap_T2(device_under_test):
     """

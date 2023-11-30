@@ -498,7 +498,12 @@ int xdp_prog1(struct CTXTYPE *ctx) {
         check_flags(tcp);
         // check_options2(tcp, data_end);
         u_int8_t nmap_result = detect_nmap_probes(data_end, tcp, ip);
-        // bpf_trace_printk("detect_nmap_probes %d", nmap_result);
+        u64 current_time = bpf_ktime_get_ns();
+        u_int32_t timestampValue = (uint32_t)(current_time/1000000);
+#ifdef DEBUG
+        bpf_trace_printk("Timestamp: %d", timestampValue);
+        bpf_trace_printk("detect_nmap_probes %d", nmap_result);
+#endif
         switch(nmap_result) {
             case TCP_NMAP_T1_P1: {
                 //     set(df, 1);
@@ -540,7 +545,7 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                     (*(u_int32_t *)(cursor +  0)) = htonl(0x020405b4);
                     (*(u_int32_t *)(cursor +  4)) = htonl(0x01030308);
                     (*(u_int32_t *)(cursor +  8)) = htonl(0x0402080a);
-                    (*(u_int32_t *)(cursor + 12)) = htonl(0x00163244);
+                    (*(u_int32_t *)(cursor + 12)) = htonl(timestampValue);
                     (*(u_int32_t *)(cursor + 16)) = htonl(0xffffffff);
                 }
 
@@ -593,7 +598,7 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                     (*(u_int32_t *)(cursor +  0)) = htonl(0x020405b4);
                     (*(u_int32_t *)(cursor +  4)) = htonl(0x01030308);
                     (*(u_int32_t *)(cursor +  8)) = htonl(0x0402080a);
-                    (*(u_int32_t *)(cursor + 12)) = htonl(0x00163244);
+                    (*(u_int32_t *)(cursor + 12)) = htonl(timestampValue+350);
                     (*(u_int32_t *)(cursor + 16)) = htonl(0xffffffff);
                 }
 
@@ -641,7 +646,7 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                     (*(u_int32_t *)(cursor +  0)) = htonl(0x020405b4);
                     (*(u_int32_t *)(cursor +  4)) = htonl(0x01030308);
                     (*(u_int32_t *)(cursor +  8)) = htonl(0x0101080a);
-                    (*(u_int32_t *)(cursor + 12)) = htonl(0x00163316);
+                    (*(u_int32_t *)(cursor + 12)) = htonl(timestampValue+700);
                     (*(u_int32_t *)(cursor + 16)) = htonl(0xffffffff);
                 }
 
@@ -711,7 +716,7 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                     (*(u_int32_t *)(cursor +  0)) = htonl(0x020405b4);
                     (*(u_int32_t *)(cursor +  4)) = htonl(0x01030308);
                     (*(u_int32_t *)(cursor +  8)) = htonl(0x0402080a);
-                    (*(u_int32_t *)(cursor + 12)) = htonl(0x0016337a);
+                    (*(u_int32_t *)(cursor + 12)) = htonl(timestampValue+1000);
                     (*(u_int32_t *)(cursor + 16)) = htonl(0xffffffff);
                 }
 
@@ -766,7 +771,7 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                     (*(u_int32_t *)(cursor +  0)) = htonl(0x020405b4);
                     (*(u_int32_t *)(cursor +  4)) = htonl(0x01030308);
                     (*(u_int32_t *)(cursor +  8)) = htonl(0x0402080a);
-                    (*(u_int32_t *)(cursor + 12)) = htonl(0x00163244);
+                    (*(u_int32_t *)(cursor + 12)) = htonl(timestampValue+1300);
                     (*(u_int32_t *)(cursor + 16)) = htonl(0xffffffff);
                 }
 
@@ -825,7 +830,7 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 {
                     (*(u_int32_t *)(cursor +  0)) = htonl(0x020405b4);
                     (*(u_int32_t *)(cursor +  4)) = htonl(0x0402080a);
-                    (*(u_int32_t *)(cursor +  8)) = htonl(0x0016344c);
+                    (*(u_int32_t *)(cursor +  8)) = htonl(timestampValue+1650);
                 }
 
                 update_ip_checksum(tcp, sizeof(struct tcphdr) + options_len, &tcp->check);
