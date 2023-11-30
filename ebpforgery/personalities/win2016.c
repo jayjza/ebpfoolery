@@ -866,7 +866,7 @@ int xdp_prog1(struct CTXTYPE *ctx) {
 
                 // Update the IP packet
                 // Set IP don't fragment
-                ip->frag_off | ntohs(IP_DF);
+                ip->frag_off = ip->frag_off | ntohs(IP_DF);
                 ip->ttl = 128;
                 // ip->tot_len = 40;
                 // Swap src/dst IP
