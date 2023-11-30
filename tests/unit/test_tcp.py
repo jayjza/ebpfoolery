@@ -358,3 +358,42 @@ def test_nmap_T7(device_under_test):
     print(repr(resp))
 
     assert resp is None, "Excpected no response but received {}".format(repr(resp))
+
+def test_nmap_ECN(device_under_test):
+    """
+    Tests NMAP ECN test response.
+    ECN test sends a TCP packet with SYN, CWR and ECE tcp flags set.
+    The urgent field value of 0xF7F5 is used even though the urgent flag is not set. The acknowledgment number is zero,
+    sequence number is random, window size field is three, and the reserved bit which immediately precedes the CWR bit is set
+    TCP options are WScale (10), NOP, MSS (1460), SACK permitted, NOP, NOP. The probe is sent to an open port.
+    """
+    tcp_options=[
+            ('WScale', 10),
+            ('NOP', b''),
+            ('MSS', struct.pack('>H', 1460)),
+            ('SAckOK', b''),
+            ('NOP', b''),
+            ('NOP', b''),
+            ]
+    tcp_probe_packet = (
+        Ether() /
+        IP (dst=str(device_under_test.IP)) /
+        TCP(sport=RandShort(),
+            dport=12345,
+            flags='SEC',
+            reserved=4,
+            window=3,
+            urgptr=0xf7f5, options=tcp_options)
+    )
+    print("Sending: {}".format(repr(tcp_probe_packet)))
+    resp = srp1(tcp_probe_packet, iface=device_under_test.interface, timeout=1)
+    print(repr(resp))
+
+    assert IP in resp, "No IP layer found in response"
+    assert TCP in resp, "No TCP layer found in response"
+    assert resp[IP].ttl == 128, "Incorrect TTL"
+    assert resp[IP].flags == "DF", "Incorrect IP Flags"
+    assert resp[TCP].window == 8192, "Incorrect TCP Window"
+    assert resp[TCP].seq == 0, "Incorrect TCP Sequence"
+    assert resp[TCP].flags == "SAE", "Incorect TCP Flags"
+    assert resp[TCP].options == [('MSS', 1460), ('NOP', None), ('WScale', 8), ('NOP', None), ('NOP', None), ('SAckOK', b'')]

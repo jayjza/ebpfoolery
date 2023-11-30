@@ -18,6 +18,9 @@
 #define TCP_PSH 0x08
 #define TCP_ACK 0x10
 #define TCP_URG 0x20
+// TCP ECN FLAGS
+#define TCP_ECE 0x40  // ECN Echo
+#define TCP_CWR 0x80  // Congestion Window Reduced
 
 // TCP OPTIONS
 #define TCPOPT_NOP 1
@@ -51,8 +54,15 @@
 #define TCP_NMAP_T5_P1 0x51 // nmap_test5_probe1
 #define TCP_NMAP_T6_P1 0x61 // nmap_test6_probe1
 #define TCP_NMAP_T7_P1 0x71 // nmap_test7_probe1
+#define TCP_NMAP_ECN   0x81
 #define TCP_NMAP_NONE  0x00 // nmap detected none
 #define TCP_NMAP_ERROR 0xFF // nmap detection error
+
+// TCP NMAP ECN PROBE
+// TCP options are [WScale (10), NOP], [MSS (1460)], [SACK permitted, NOP, NOP]. The probe is sent to an open port.
+#define TCP_NMAP_ECN_PROBE_1 0x010a0303
+#define TCP_NMAP_ECN_PROBE_2 0xb4050402
+#define TCP_NMAP_ECN_PROBE_3 0x01010204
 
 // TCP NMAP probe values as captured by wireshark and the byte order reversed to network order
 // Packet #1: window scale (10), NOP, MSS (1460), timestamp (TSval: 0xFFFFFFFF; TSecr: 0), SACK permitted. The window field is 1.
@@ -245,6 +255,23 @@ static inline uint8_t detect_nmap_probes(void* data_end, struct tcphdr* tcp, str
 
     void * cursor = options_start;
     uint16_t i;
+    u_int16_t flags = ntohs(tcp_flag_word(tcp)) & 0x00FF;    // We only want a part of the word, and we only want the flag field
+            // TODO: We need to check if the ports is open / closed, but we cannot determine that right now from XDP
+
+    if ((flags == TCP_SYN | TCP_CWR | TCP_ECE) && (options_len == 12)) {
+        if (cursor + 12 > data_end)
+        {
+            bpf_trace_printk("Error: boundary exceeded while parsing TCP Options");
+            return TCP_NMAP_NONE;
+        }
+        if ((*(u_int32_t *)(cursor) == TCP_NMAP_ECN_PROBE_1) &&
+            (*(u_int32_t *)(cursor + 4) == TCP_NMAP_ECN_PROBE_2) &&
+            (*(u_int32_t *)(cursor + 8) == TCP_NMAP_ECN_PROBE_3)) {
+                return TCP_NMAP_ECN;
+        } else {
+            return TCP_NMAP_NONE;
+        }
+    }
     // The nmap probe TCP options is either 16 or 20 bytes
     if (options_len == 20) {
         // bpf_trace_printk("TCP Options length is %d and hdr %d", options_len, sizeof(struct tcphdr));
@@ -309,8 +336,6 @@ static inline uint8_t detect_nmap_probes(void* data_end, struct tcphdr* tcp, str
                  (*(u_int32_t *)(cursor + 12) == TCP_NMAP_T2_T6_PROBES_4) &&
                  (*(u_int32_t *)(cursor + 16) == TCP_NMAP_T2_T6_PROBES_5) )
         {
-            u_int16_t flags = ntohs(tcp_flag_word(tcp)) & 0x00FF;    // We only want a part of the word, and we only want the flag field
-            // TODO: We need to check if the ports is open / closed, but we cannot determine that right now from XDP
 
             if ((flags == 0) &&
                 (ntohs(tcp->window) == 128) &&
@@ -498,7 +523,7 @@ int xdp_prog1(struct CTXTYPE *ctx) {
 // 	__be16	urg_ptr;
 // };
 
-        check_flags(tcp);
+        // check_flags(tcp);
         // check_options2(tcp, data_end);
         u_int8_t nmap_result = detect_nmap_probes(data_end, tcp, ip);
         u64 current_time = bpf_ktime_get_ns();
@@ -508,6 +533,77 @@ int xdp_prog1(struct CTXTYPE *ctx) {
         bpf_trace_printk("detect_nmap_probes %d", nmap_result);
 #endif
         switch(nmap_result) {
+            case TCP_NMAP_ECN: {
+                // ECN(R=Y%DF=Y%T=7B-85%TG=80%W=2000%O=M5B4NW8NNS%CC=Y%Q=)
+                // R = Y (whether we respond to the probe)
+                // DF = Y (Dont fragment bit is set)
+                // T = 7B-85 (TTL)
+                // TG = 80 (TTL guess)
+                // W = 2000  (window field size)
+                // O = M5B4NW8NNS (Options: MSS 1460, Nop, WS 8, Nop, Nop, SAckPermitted)
+                // CC = Y (Only the ECE bit is set (not CWR). This host supports ECN.)
+                // Q = (empty)
+                /*
+                {
+              set(df, 1);
+              set(ttl, 128);
+              set(win, 8192);
+              set(flags, syn|ack|ece);
+              insert(mss, 1460);
+              insert(wscale, 8);
+              insert(sackOK);
+              reply;
+                 }
+                */
+                // Fix TCP header
+                // Set Syn/Ack/ECE on the TCP header
+                tcp->syn = 1;
+                tcp->ack = 1;
+                tcp->ece = 1;
+                tcp->cwr = 0;
+                tcp->urg_ptr = 0;
+                tcp->res1 = 0;
+
+                tcp->window = htons(8192);
+
+                // Swap src/dst TCP
+                uint16_t src_tcp_port = tcp->source;
+                tcp->source = tcp->dest;
+                tcp->dest = src_tcp_port;
+
+                // Set the TCP options
+                u_int32_t options_len = 12;
+                void *options_start = (void *) tcp + sizeof(struct tcphdr);
+                void * cursor = options_start;
+                if (cursor + 12 > data_end)
+                {
+                    bpf_trace_printk("Error: boundary exceeded while trying to set TCP Options");
+                    return DEFAULT_ACTION;
+                }
+                else
+                {
+                    (*(u_int32_t *)(cursor +  0)) = htonl(0x020405b4);
+                    (*(u_int32_t *)(cursor +  4)) = htonl(0x01030308);
+                    (*(u_int32_t *)(cursor +  8)) = htonl(0x01010402);
+                }
+                update_ip_checksum(tcp, sizeof(struct tcphdr) + options_len, &tcp->check);
+
+                ip->frag_off = ip->frag_off | ntohs(IP_DF);
+                // Set TTL to 128
+                ip->ttl = 128;
+
+                // Swap src/dst IP
+                uint32_t src_ip = ip->saddr;
+                ip->saddr = ip->daddr;
+                ip->daddr = src_ip;
+                // Recalculate IP checksum
+                update_ip_checksum(ip, sizeof(struct iphdr), &ip->check);
+
+                // Update the ethernet packet
+                swap_mac((uint8_t *)eth->h_source, (uint8_t *)eth->h_dest);
+                bpf_trace_printk("NMAP detection found ECN test");
+                return XDP_TX;
+            }
             case TCP_NMAP_T1_P1: {
                 //     set(df, 1);
                 //     set(ttl, 128);
