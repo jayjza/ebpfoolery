@@ -1,4 +1,21 @@
+# eBPForgery
+
+<img src="docs/logo.png" width="50" style="float: left"> eBPForgery brings the stealthy OS fooling of Canary to the world of eBPF.
+
+
+# Overview
+
+Thinkst Canary offers a device that mimics real life targets to an incredible degree of accuracy. One of painstaking methods to fooling attackers into interaction with a machine, is to mimic certain OS IP Stack personalities (IPPERS). eBPForgery offers this capability with the added bonus of portability (through the usage of eBPF).
+
+eBPForgery uses the magic of eBPF (and XDP) to mimic certain OS IP Stacks (currently Windows 2016 and Playstation 4) meaning that if an attacker nmaps your Ubuntu machine, you can choose what OS they are going to get back. 
+
 # Usage
+## View Personalities
+```
+./ebpforged -l
+```
+
+## Running
 ```
 ./ebpforged -i <network_interface> -p <personality>
 ```
@@ -72,7 +89,7 @@ poetry run python3 ...
 ```
 
 
-POTENTIAL ISSUES:
+# Potential Issues:
 
 1. Missing BCC after above steps still
 
