@@ -537,7 +537,7 @@ int xdp_prog1(struct CTXTYPE *ctx) {
         // check_options2(tcp, data_end);
         u_int8_t nmap_result = detect_nmap_probes(data_end, tcp, ip);
         u64 current_time = bpf_ktime_get_ns();
-        u_int32_t timestampValue = (uint32_t)(current_time/1000000);
+        u_int32_t timestampValue = (uint32_t)(current_time*10);
 #ifdef DEBUG
         bpf_trace_printk("Timestamp: %d", timestampValue);
         bpf_trace_printk("detect_nmap_probes %d", nmap_result);
