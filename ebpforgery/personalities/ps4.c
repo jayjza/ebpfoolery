@@ -36,10 +36,6 @@
 #define TCPOLEN_SACK_PERMITTED 2
 #define TCPOLEN_TIMESTAMP 10
 
-#ifndef TH_WIN
-#define TH_WIN window
-#endif
-
 #define TCP_MAX_OPTION_LEN 40
 
 #define TCP_NMAP_T1_P1 0x11 // nmap_test1_probe1
@@ -547,16 +543,7 @@ int xdp_prog1(struct CTXTYPE *ctx) {
         switch(nmap_result) {
             case TCP_NMAP_ECN: {
                 /* ECN Test
-                {
-                set(df, 1);
-                set(ttl, 128);
-                set(win, 8192);
-                set(flags, syn|ack|ece);
-                insert(mss, 1460);
-                insert(wscale, 8);
-                insert(sackOK);
-                reply;
-                 }
+                ECN(R=Y%DF=Y%T=3B-45%TG=40%W=FFFF%O=M5B4NW6SLL%CC=N%Q=)
                 */
                 // Fix TCP header
                 // Set Syn/Ack/ECE on the TCP header
@@ -610,24 +597,6 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 return XDP_TX;
             }
             case TCP_NMAP_T1_P1: {
-                /* SEQ1
-                if (nmap(seq1))
-                {
-                    set(df, 1);
-                    set(ttl, 128);
-                    set(ack, this+1);
-                    set(flags, ack|syn);
-
-                    set(win, 8192);
-                    insert(mss,1460);
-                    insert(wscale,8);
-                    insert(sackOK);
-                    insert(timestamp);
-
-                    reply;
-                }
-                */
-
                 // Fix TCP header
                 // Set Syn/Ack on the TCP header
                 tcp->syn = 1;
@@ -655,7 +624,7 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 else
                 {
                     (*(u_int32_t *)(cursor +  0)) = htonl(0x020405b4);
-                    (*(u_int32_t *)(cursor +  4)) = htonl(0x01030308);
+                    (*(u_int32_t *)(cursor +  4)) = htonl(0x01030306);
                     (*(u_int32_t *)(cursor +  8)) = htonl(0x0402080a);
                     (*(u_int32_t *)(cursor + 12)) = htonl(timestampValue);
                     (*(u_int32_t *)(cursor + 16)) = htonl(0xffffffff);
@@ -685,19 +654,6 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 // return rc;
             }
             case TCP_NMAP_T1_P2: {
-                /*
-                if (nmap(seq2))
-                {
-                    set(flags, ack|syn);
-                    set(win, 8192);
-                    insert(mss,1460);
-                    insert(wscale,8);
-                    insert(sackOK);
-                    insert(timestamp);
-
-                    reply;
-                }
-                */
                 // Fix TCP header
                 // Set Syn/Ack on the TCP header
                 tcp->syn = 1;
@@ -723,8 +679,8 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 }
                 else
                 {
-                    (*(u_int32_t *)(cursor +  0)) = htonl(0x020405b4);
-                    (*(u_int32_t *)(cursor +  4)) = htonl(0x01030308);
+                    (*(u_int32_t *)(cursor +  0)) = htonl(0x02040578);
+                    (*(u_int32_t *)(cursor +  4)) = htonl(0x01030306);
                     (*(u_int32_t *)(cursor +  8)) = htonl(0x0402080a);
                     (*(u_int32_t *)(cursor + 12)) = htonl(timestampValue);
                     (*(u_int32_t *)(cursor + 16)) = htonl(0xffffffff);
@@ -750,18 +706,6 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 return XDP_TX;
             }
             case TCP_NMAP_T1_P3: {
-                /*
-                if (option(nop) && option(wscale) && option(mss))
-                {
-                    set(flags, ack|syn);
-                    set(win, 8192);
-                    insert(mss,1460);
-                    insert(wscale,8);
-                    insert(timestamp);
-
-                    reply;
-                }
-                */
                 // Fix TCP header
                 // Set Syn/Ack on the TCP header
                 tcp->syn = 1;
@@ -787,8 +731,8 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 }
                 else
                 {
-                    (*(u_int32_t *)(cursor +  0)) = htonl(0x020405b4);
-                    (*(u_int32_t *)(cursor +  4)) = htonl(0x01030308);
+                    (*(u_int32_t *)(cursor +  0)) = htonl(0x02040280);
+                    (*(u_int32_t *)(cursor +  4)) = htonl(0x01030306);
                     (*(u_int32_t *)(cursor +  8)) = htonl(0x0101080a);
                     (*(u_int32_t *)(cursor + 12)) = htonl(timestampValue);
                     (*(u_int32_t *)(cursor + 16)) = htonl(0xffffffff);
@@ -814,19 +758,6 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 return XDP_TX;
             }
             case TCP_NMAP_T1_P4: {
-                /*
-                if (option(sackOK) && option(wscale) && option(eol))
-                {
-                    set(flags, ack|syn);
-                    set(win, 8192);
-                    insert(mss,1460);
-                    insert(wscale,8);
-                    insert(sackOK);
-                    insert(timestamp);
-
-                    reply;
-                }
-                */
                 // For probe4 we need to make the buffer slightly bigger
                 if (bpf_xdp_adjust_tail(ctx, 4))
                 {
@@ -875,7 +806,7 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 else
                 {
                     (*(u_int32_t *)(cursor +  0)) = htonl(0x020405b4);
-                    (*(u_int32_t *)(cursor +  4)) = htonl(0x01030308);
+                    (*(u_int32_t *)(cursor +  4)) = htonl(0x01030306);
                     (*(u_int32_t *)(cursor +  8)) = htonl(0x0402080a);
                     (*(u_int32_t *)(cursor + 12)) = htonl(timestampValue);
                     (*(u_int32_t *)(cursor + 16)) = htonl(0xffffffff);
@@ -901,19 +832,6 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 return XDP_TX;
             }
             case TCP_NMAP_T1_P5: {
-                /* SEQ5
-                if (option(mss) && option(sackOK) && option(wscale) && option(eol))
-                {
-                    set(flags, ack|syn);
-                    set(win, 8192);
-                    insert(mss,1460);
-                    insert(wscale,8);
-                    insert(sackOK);
-                    insert(timestamp);
-
-                    reply;
-                }
-                */
                 // Fix TCP header
                 // Set Syn/Ack on the TCP header
                 tcp->syn = 1;
@@ -939,8 +857,8 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 }
                 else
                 {
-                    (*(u_int32_t *)(cursor +  0)) = htonl(0x020405b4);
-                    (*(u_int32_t *)(cursor +  4)) = htonl(0x01030308);
+                    (*(u_int32_t *)(cursor +  0)) = htonl(0x02040218);
+                    (*(u_int32_t *)(cursor +  4)) = htonl(0x01030306);
                     (*(u_int32_t *)(cursor +  8)) = htonl(0x0402080a);
                     (*(u_int32_t *)(cursor + 12)) = htonl(timestampValue);
                     (*(u_int32_t *)(cursor + 16)) = htonl(0xffffffff);
@@ -965,18 +883,6 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 return XDP_TX;
             }
             case TCP_NMAP_T1_P6: {
-                // /* SEQ6 */
-                // if (option(mss) && option(timestamp))
-                // {
-                //     set(flags, ack|syn);
-                //     set(win, 8192);
-                //     insert(mss,1460);
-                //     insert(sackOK);
-                //     insert(timestamp);
-
-                //     reply;
-                // }
-
                 // Fix TCP header
                 // Set Syn/Ack on the TCP header
                 tcp->syn = 1;
@@ -1002,7 +908,7 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 }
                 else
                 {
-                    (*(u_int32_t *)(cursor +  0)) = htonl(0x020405b4);
+                    (*(u_int32_t *)(cursor +  0)) = htonl(0x02040109);
                     (*(u_int32_t *)(cursor +  4)) = htonl(0x0402080a);
                     (*(u_int32_t *)(cursor +  8)) = htonl(timestampValue);
                     (*(u_int32_t *)(cursor + 12)) = htonl(0xffffffff);
