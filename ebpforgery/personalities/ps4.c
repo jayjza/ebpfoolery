@@ -967,7 +967,7 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                     (*(u_int32_t *)(cursor +  0)) = htonl(0x02040109);
                     (*(u_int32_t *)(cursor +  4)) = htonl(0x01030306);
                     (*(u_int32_t *)(cursor +  8)) = htonl(0x0402080a);
-                    (*(u_int32_t *)(cursor +  12)) = htonl(timestampValue);
+                    (*(u_int32_t *)(cursor + 12)) = htonl(timestampValue);
                     (*(u_int32_t *)(cursor + 16)) = htonl(0xffffffff);
                 }
 
@@ -977,7 +977,7 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 // Set IP don't fragment
                 ip->frag_off = ip->frag_off | ntohs(IP_DF);
                 ip->ttl = 64;
-                ip->tot_len = htons(40);
+                ip->tot_len = htons(60);
                 // Set the IP identification field
                 ip->id = htons((*ip_id));
 
@@ -1112,24 +1112,6 @@ int xdp_prog1(struct CTXTYPE *ctx) {
         // 	__be16	len;
         // 	__sum16	check;
         // };
-        /*
-            udp_unreach {
-                reply yes;
-                df no;
-                ttl 128;
-                max-len 356;
-                tos 0;
-
-                mangle-original {
-                    ip-len 328;
-                    ip-id same;ip
-                    ip-csum same;
-                    udp-len 308;
-                    udp-csum same;
-                    udp-data same;
-                }
-            }
-        */
         if (data + sizeof(struct ethhdr) + sizeof(struct iphdr) + sizeof(struct udphdr) > data_end)
         {
             bpf_trace_printk("ICMP packet exceeding size of buffer");
@@ -1300,6 +1282,7 @@ int xdp_prog1(struct CTXTYPE *ctx) {
         // Set TTL to 128
         ip->ttl = 64;
         // Set the IP identification field
+        *ip_id = ((*ip_id) + 1003);
         ip->id = htons((*ip_id));
 
         // Swap src/dst IP
