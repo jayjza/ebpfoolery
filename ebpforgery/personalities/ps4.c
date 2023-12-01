@@ -1128,20 +1128,20 @@ int xdp_prog1(struct CTXTYPE *ctx) {
 
         // Update the existing IP header
         ip->protocol = IPPROTO_ICMP;
-        ip->tot_len = htons(ntohs(ip->tot_len) + new_header_size);
+        ip->tot_len = htons(ntohs(ip->tot_len) + new_header_size - udp_data_len);
 
 #ifdef DEBUG
         bpf_trace_printk("ip length is %d", ntohs(ip->tot_len));
 #endif
-
-        // Clear don't fragement
-        if (ip->frag_off & ntohs(IP_DF))
-            ip->frag_off = ip->frag_off ^ ntohs(IP_DF);
+        // // Clear don't fragement
+        // if (ip->frag_off & ntohs(IP_DF))
+        //     ip->frag_off = ip->frag_off ^ ntohs(IP_DF);
 
         // Set TTL to 128
         ip->ttl = 64;
         // Set the IP identification field
-       ip->id = htons((*ip_id));
+        ip->id = htons((*ip_id));
+
 
         // Swap src/dst IP
         uint32_t src_ip = ip->saddr;
@@ -1152,6 +1152,13 @@ int xdp_prog1(struct CTXTYPE *ctx) {
 
         // Recalculate IP checksum
         update_ip_checksum(ip, sizeof(struct iphdr), &ip->check);
+
+        // Since we don't have options in the packet anymore we need to chop it off.
+        if (bpf_xdp_adjust_tail(ctx, 0 - udp_data_len))
+        {
+            bpf_trace_printk("Error: Failed to remote options from packet.");
+            return DEFAULT_ACTION;
+        }
 
         return XDP_TX;
     }
