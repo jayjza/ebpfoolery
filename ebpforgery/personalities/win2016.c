@@ -127,7 +127,7 @@
 
 #define NMAP_UDP_PROBE_DATA_LEN 300
 
-BPF_PERCPU_ARRAY(ip_identification, u_int32_t, 1);
+BPF_ARRAY(ip_identification, u_int32_t, 1);
 
 #define MAX_BUFFER_SIZE 512
 u8 buffer[MAX_BUFFER_SIZE];                 //!< A temporary buffer where we can store some data when processing.
@@ -467,9 +467,9 @@ int xdp_prog1(struct CTXTYPE *ctx) {
     // We need to increment the value for each packet.
     // (*ip_id)++;
     lock_xadd(ip_id, 1);
-
+#ifdef DEBUG
     bpf_trace_printk("IP ID = %d", (*ip_id));
-
+#endif
     struct iphdr *ip = data + sizeof(*eth);
 
 #ifdef DEBUG

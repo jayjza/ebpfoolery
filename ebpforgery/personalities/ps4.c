@@ -125,7 +125,7 @@
 
 #define NMAP_UDP_PROBE_DATA_LEN 300
 
-BPF_PERCPU_ARRAY(ip_identification, u_int32_t, 1);
+BPF_ARRAY(ip_identification, u_int32_t, 1);
 
 #define MAX_BUFFER_SIZE 512
 u8 buffer[MAX_BUFFER_SIZE];                 //!< A temporary buffer where we can store some data when processing.
