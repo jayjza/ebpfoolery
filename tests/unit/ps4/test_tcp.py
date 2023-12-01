@@ -369,7 +369,14 @@ def test_nmap_T7(device_under_test):
     resp = srp1(tcp_probe_packet, iface=device_under_test.interface, timeout=1)
     print(repr(resp))
 
-    assert resp is None, "Excpected no response but received {}".format(repr(resp))
+    assert IP in resp, "No IP layer found in response"
+    assert TCP in resp, "No TCP layer found in response"
+
+    assert resp[IP].ttl == 64, "Incorrect TTL"
+    assert resp[IP].flags == "DF", "Incorrect IP Flags"
+    assert resp[TCP].window == 0, "Incorrect TCP Window"
+    assert resp[TCP].seq == 0, "Incorrect TCP Sequence"
+    assert resp[TCP].flags == "RA", "Incorect TCP Flags"
 
 def test_nmap_ECN(device_under_test):
     """
