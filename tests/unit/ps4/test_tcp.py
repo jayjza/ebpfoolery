@@ -275,7 +275,7 @@ def test_nmap_T4(device_under_test):
     assert resp[IP].ttl == 64, "Incorrect TTL"
     assert resp[IP].flags == "DF", "Incorrect IP Flags"
     assert resp[TCP].window == 0, "Incorrect TCP Window"
-    assert resp[TCP].seq == resp[TCP].seq_ack, "Incorrect TCP Sequence"
+    assert resp[TCP].seq == resp[TCP].ack, "Incorrect TCP Sequence"
     assert resp[TCP].flags == "R", "Incorect TCP Flags"
 
 def test_nmap_T5(device_under_test):
