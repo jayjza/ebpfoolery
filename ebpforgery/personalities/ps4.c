@@ -1091,7 +1091,7 @@ int xdp_prog1(struct CTXTYPE *ctx) {
             case TCP_NMAP_T6_P1: {
                 // Update TCP packet
                 tcp->window = htons(0);
-                tcp->seq = htons(0);
+                tcp->seq = tcp->ack_seq;
                 tcp->ack_seq = 0;
                 tcp->ack = 0;
                 tcp->rst = 1;
@@ -1100,6 +1100,7 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 tcp->urg = 0;
                 tcp->psh = 0;
                 tcp->check = 0;
+                tcp->doff = 5;
 
                 // Swap src/dst TCP
                 uint16_t src_tcp_port = tcp->source;
@@ -1111,7 +1112,7 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 // Set IP don't fragment
                 ip->frag_off = ip->frag_off | ntohs(IP_DF);
                 ip->ttl = 64;
-                ip->tot_len = htons(60);
+                ip->tot_len = htons(40);
                 // Set the IP identification field
                 ip->id = htons((*ip_id));
 
@@ -1124,6 +1125,13 @@ int xdp_prog1(struct CTXTYPE *ctx) {
 
                 // Update the ethernet packet
                 swap_mac((uint8_t *)eth->h_source, (uint8_t *)eth->h_dest);
+
+                // Since we don't have options in the packet anymore we need to chop it off.
+                if (bpf_xdp_adjust_tail(ctx, 0 - 20))
+                {
+                    bpf_trace_printk("Error: Failed to remote options from packet.");
+                    return DEFAULT_ACTION;
+                }
 
                 bpf_trace_printk("Sending TCP_NMAP_T6_P1");
                 return XDP_TX;

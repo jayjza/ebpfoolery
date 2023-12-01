@@ -355,10 +355,7 @@ def test_nmap_T6(device_under_test):
     assert resp[TCP].seq == 0, "Incorrect TCP Sequence"
     assert resp[TCP].ack == 0, "Incorrect TCP Seq Ack"
     assert resp[TCP].flags == "R", "Incorect TCP Flags"
-    assert resp[TCP].options[0] == ('WScale', 10)
-    assert resp[TCP].options[1] == ('NOP', None)
-    assert resp[TCP].options[2] == ('MSS', 265)
-    assert resp[TCP].options[4] == ('SAckOK', b'')
+    assert resp[TCP].options == [], "Invalid Options"
 
 
 def test_nmap_T7(device_under_test):
