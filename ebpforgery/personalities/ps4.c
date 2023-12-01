@@ -940,12 +940,15 @@ int xdp_prog1(struct CTXTYPE *ctx) {
             case TCP_NMAP_T3_P1: {
                 // Update TCP packet
                 tcp->window = htons(65535);
-                tcp->seq = htonl(bpf_get_prandom_u32());
                 tcp->ack_seq = htonl(ntohl(tcp->seq) + 1);
+                tcp->seq = htonl(bpf_get_prandom_u32());
                 tcp->ack = 1;
                 tcp->rst = 0;
                 tcp->syn = 1;
-                // tcp->doff = 5;
+                tcp->psh = 0;
+                tcp->fin = 0;
+                tcp->urg = 0;
+                tcp->doff = 10;
                 tcp->check = 0;
 
                 // Swap src/dst TCP

@@ -222,8 +222,8 @@ def test_nmap_T3(device_under_test):
             options=tcp_options)
     )
 
-    print("Sending: {}".format(repr(tcp_probe_packet)))
     resp = srp1(tcp_probe_packet, iface=device_under_test.interface, timeout=1)
+    print("Sending: {}".format(repr(tcp_probe_packet)))
     print(repr(resp))
 
     assert IP in resp, "No IP layer found in response"
@@ -231,7 +231,7 @@ def test_nmap_T3(device_under_test):
 
     assert resp[IP].ttl == 64, "Incorrect TTL"
     assert resp[IP].flags == "DF", "Incorrect IP Flags"
-    assert resp[TCP].window == 0, "Incorrect TCP Window"
+    assert resp[TCP].window == 65535, "Incorrect TCP Window"
     assert resp[TCP].seq != 0, "Incorrect TCP Sequence"
     assert resp[TCP].seq_ack == resp[TCP].seq + 1, "Incorrect TCP Seq Ack"
     assert resp[TCP].flags == "AS", "Incorect TCP Flags"
