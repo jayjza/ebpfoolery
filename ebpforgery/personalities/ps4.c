@@ -28,6 +28,7 @@
 #define TCPOPT_WINDOW_SCALE 3
 #define TCPOPT_SACK_PERMITTED 4
 #define TCPOPT_TIMESTAMP 8
+#define TCPOPT_EOL 0 // End of Options List
 
 // TCP OPTIONS CONSTANTS
 #define TCPOLEN_NOP 1
@@ -35,6 +36,7 @@
 #define TCPOLEN_WINDOW 3
 #define TCPOLEN_SACK_PERMITTED 2
 #define TCPOLEN_TIMESTAMP 10
+#define TCPOLEN_EOL 1 // End of Options List
 
 #define TCP_MAX_OPTION_LEN 40
 
@@ -549,7 +551,7 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 // Set Syn/Ack/ECE on the TCP header
                 tcp->syn = 1;
                 tcp->ack = 1;
-                tcp->ece = 1;
+                tcp->ece = 0;
                 tcp->cwr = 0;
                 tcp->urg_ptr = 0;
                 tcp->res1 = 0;
@@ -573,13 +575,13 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 else
                 {
                     (*(u_int32_t *)(cursor +  0)) = htonl(0x020405b4);
-                    (*(u_int32_t *)(cursor +  4)) = htonl(0x01030308);
-                    (*(u_int32_t *)(cursor +  8)) = htonl(0x01010402);
+                    (*(u_int32_t *)(cursor +  4)) = htonl(0x01030306);
+                    (*(u_int32_t *)(cursor +  8)) = htonl(0x04020000);
                 }
                 update_ip_checksum(tcp, sizeof(struct tcphdr) + options_len, &tcp->check);
 
                 ip->frag_off = ip->frag_off | ntohs(IP_DF);
-                // Set TTL to 128
+                // Set TTL to 64
                 ip->ttl = 64;
                 // Set the IP identification field
                 ip->id = htons((*ip_id));

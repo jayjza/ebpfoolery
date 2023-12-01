@@ -403,9 +403,9 @@ def test_nmap_ECN(device_under_test):
 
     assert IP in resp, "No IP layer found in response"
     assert TCP in resp, "No TCP layer found in response"
-    assert resp[IP].ttl == 128, "Incorrect TTL"
+    assert resp[IP].ttl == 64, "Incorrect TTL"
     assert resp[IP].flags == "DF", "Incorrect IP Flags"
-    assert resp[TCP].window == 8192, "Incorrect TCP Window"
+    assert resp[TCP].window == 65535, "Incorrect TCP Window"
     assert resp[TCP].seq == 0, "Incorrect TCP Sequence"
     assert resp[TCP].flags == "SAE", "Incorect TCP Flags"
-    assert resp[TCP].options == [('MSS', 1460), ('NOP', None), ('WScale', 8), ('NOP', None), ('NOP', None), ('SAckOK', b'')]
+    assert resp[TCP].options == [('MSS', 1460), ('NOP', None), ('WScale', 6), ('SAckOK', b''), ('EOL', b''), ('EOL', b'')]
