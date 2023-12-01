@@ -462,10 +462,13 @@ int xdp_prog1(struct CTXTYPE *ctx) {
         return DEFAULT_ACTION;
     }
     if (*ip_id == 0) {
-        *ip_id = bpf_get_prandom_u32();
+        *ip_id = bpf_get_prandom_u32() & 0x00FFFFFF;
     }
     // We need to increment the value for each packet.
-    (*ip_id)++;
+    // (*ip_id)++;
+    lock_xadd(ip_id, 1);
+
+    bpf_trace_printk("IP ID = %d", (*ip_id));
 
     struct iphdr *ip = data + sizeof(*eth);
 
