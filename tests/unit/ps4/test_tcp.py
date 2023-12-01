@@ -226,7 +226,19 @@ def test_nmap_T3(device_under_test):
     resp = srp1(tcp_probe_packet, iface=device_under_test.interface, timeout=1)
     print(repr(resp))
 
-    assert resp is None, "Excpected no response but received {}".format(repr(resp))
+    assert IP in resp, "No IP layer found in response"
+    assert TCP in resp, "No TCP layer found in response"
+
+    assert resp[IP].ttl == 64, "Incorrect TTL"
+    assert resp[IP].flags == "DF", "Incorrect IP Flags"
+    assert resp[TCP].window == 0, "Incorrect TCP Window"
+    assert resp[TCP].seq != 0, "Incorrect TCP Sequence"
+    assert resp[TCP].seq_ack == resp[TCP].seq + 1, "Incorrect TCP Seq Ack"
+    assert resp[TCP].flags == "AS", "Incorect TCP Flags"
+    assert resp[TCP].options[0] == ('MSS', 265)
+    assert resp[TCP].options[1] == ('NOP', None)
+    assert resp[TCP].options[2] == ('WScale', 6)
+    assert resp[TCP].options[3] == ('SAckOK', b'')
 
 def test_nmap_T4(device_under_test):
     """
