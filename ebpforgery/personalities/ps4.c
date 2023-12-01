@@ -1089,6 +1089,43 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 return XDP_TX;
             }
             case TCP_NMAP_T6_P1: {
+                // Update TCP packet
+                tcp->window = htons(0);
+                tcp->seq = htons(0);
+                tcp->ack_seq = 0;
+                tcp->ack = 0;
+                tcp->rst = 1;
+                tcp->syn = 0;
+                tcp->fin = 0;
+                tcp->urg = 0;
+                tcp->psh = 0;
+                tcp->check = 0;
+
+                // Swap src/dst TCP
+                uint16_t src_tcp_port = tcp->source;
+                tcp->source = tcp->dest;
+                tcp->dest = src_tcp_port;
+
+                update_ip_checksum(tcp, sizeof(struct tcphdr), &tcp->check);
+                // Update the IP packet
+                // Set IP don't fragment
+                ip->frag_off = ip->frag_off | ntohs(IP_DF);
+                ip->ttl = 64;
+                ip->tot_len = htons(60);
+                // Set the IP identification field
+                ip->id = htons((*ip_id));
+
+                // Swap src/dst IP
+                uint32_t src_ip = ip->saddr;
+                ip->saddr = ip->daddr;
+                ip->daddr = src_ip;
+                // Recalculate IP checksum
+                update_ip_checksum(ip, sizeof(struct iphdr), &ip->check);
+
+                // Update the ethernet packet
+                swap_mac((uint8_t *)eth->h_source, (uint8_t *)eth->h_dest);
+
+                bpf_trace_printk("Sending TCP_NMAP_T6_P1");
                 return XDP_TX;
             }
             case TCP_NMAP_T2_P1: {
