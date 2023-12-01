@@ -580,7 +580,7 @@ int xdp_prog1(struct CTXTYPE *ctx) {
 
                 ip->frag_off = ip->frag_off | ntohs(IP_DF);
                 // Set TTL to 128
-                ip->ttl = 128;
+                ip->ttl = 64;
                 // Set the IP identification field
                 ip->id = htons((*ip_id));
 
@@ -636,7 +636,7 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 // Set IP don't fragment
                 ip->frag_off = ip->frag_off | ntohs(IP_DF);
                 // Set TTL to 128
-                ip->ttl = 128;
+                ip->ttl = 64;
                 // Set the IP identification field
                 ip->id = htons((*ip_id));
 
@@ -955,7 +955,7 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 // Update the IP packet
                 // Set IP don't fragment
                 ip->frag_off = ip->frag_off | ntohs(IP_DF);
-                ip->ttl = 128;
+                ip->ttl = 64;
                 ip->tot_len = htons(40);
                 // Set the IP identification field
                 ip->id = htons((*ip_id));
@@ -1135,7 +1135,7 @@ int xdp_prog1(struct CTXTYPE *ctx) {
             ip->frag_off = ip->frag_off ^ ntohs(IP_DF);
 
         // Set TTL to 128
-        ip->ttl = 128;
+        ip->ttl = 64;
         // Set the IP identification field
        ip->id = htons((*ip_id));
 
@@ -1174,19 +1174,19 @@ int xdp_prog1(struct CTXTYPE *ctx) {
         struct icmphdr *icmp = data + sizeof(*eth) + sizeof(*ip);
 
         // Build ICMP echo reply
-        icmp->code = 0;
-        icmp->type = 0;
+        // icmp->code = 0;
+        // icmp->type = 0;
         // Update checksum
         icmp->checksum = 0;
 
         update_ip_checksum(icmp, sizeof(struct icmphdr), &icmp->checksum);
 
-        // Clear don't fragement
-        if (ip->frag_off & ntohs(IP_DF))
-            ip->frag_off = ip->frag_off ^ ntohs(IP_DF);
+        // // Clear don't fragement
+        // if (ip->frag_off & ntohs(IP_DF))
+        //     ip->frag_off = ip->frag_off ^ ntohs(IP_DF);
 
         // Set TTL to 128
-        ip->ttl = 128;
+        ip->ttl = 64;
         // Set the IP identification field
         ip->id = htons((*ip_id));
 
