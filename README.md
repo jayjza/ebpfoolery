@@ -1,6 +1,7 @@
 # eBPForgery
 
-<img src="docs/logo.png" width="50" style="float: left"> eBPForgery brings the stealthy OS fooling of Canary to the world of eBPF.
+<img src="docs/logo.png" width="800" style="float: left"> 
+eBPForgery brings the stealthy OS fooling of Canary to the world of eBPF.
 
 
 # Overview
