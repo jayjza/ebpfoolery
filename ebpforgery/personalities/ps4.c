@@ -935,6 +935,66 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 bpf_trace_printk("NMAP detection found probe 6 of test 1");
                 return XDP_TX;
             }
+            case TCP_NMAP_T3_P1: {
+                // Update TCP packet
+                tcp->window = htons(65535);
+                tcp->seq = htonl(bpf_get_prandom_u32());
+                tcp->ack_seq = htonl(ntohl(tcp->seq) + 1);
+                tcp->ack = 1;
+                tcp->rst = 1;
+                tcp->syn = 0;
+                tcp->doff = 5;
+                tcp->check = 0;
+
+                // Swap src/dst TCP
+                uint16_t src_tcp_port = tcp->source;
+                tcp->source = tcp->dest;
+                tcp->dest = src_tcp_port;
+
+                update_ip_checksum(tcp, sizeof(struct tcphdr), &tcp->check);
+
+                // Update the IP packet
+                // Set IP don't fragment
+                ip->frag_off = ip->frag_off | ntohs(IP_DF);
+                ip->ttl = 64;
+                ip->tot_len = htons(40);
+                // Set the IP identification field
+                ip->id = htons((*ip_id));
+
+                // Swap src/dst IP
+                uint32_t src_ip = ip->saddr;
+                ip->saddr = ip->daddr;
+                ip->daddr = src_ip;
+
+                // Set the TCP options
+                u_int32_t options_len = 16;
+                void *options_start = (void *) tcp + sizeof(struct tcphdr);
+                void * cursor = options_start;
+                if (cursor + 16 > data_end)
+                {
+                    bpf_trace_printk("Error: boundary exceeded while trying to set TCP Options");
+                    return DEFAULT_ACTION;
+                }
+                else
+                {
+                    (*(u_int32_t *)(cursor +  0)) = htonl(0x02040109);
+                    (*(u_int32_t *)(cursor +  4)) = htonl(0x0402080a);
+                    (*(u_int32_t *)(cursor +  8)) = htonl(timestampValue);
+                    (*(u_int32_t *)(cursor + 12)) = htonl(0xffffffff);
+                }
+
+                update_ip_checksum(tcp, sizeof(struct tcphdr) + options_len, &tcp->check);
+
+                // Update the ethernet packet
+                swap_mac((uint8_t *)eth->h_source, (uint8_t *)eth->h_dest);
+
+                bpf_trace_printk("Sending TCP_NMAP_T3_P1");
+
+                return XDP_TX;
+            }
+            case TCP_NMAP_T4_P1: {
+                return XDP_TX;
+            }
             case TCP_NMAP_T5_P1:
             {
                 // Update TCP packet
@@ -982,16 +1042,16 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 bpf_trace_printk("Sending TCP_NMAP_T5_P1");
                 return XDP_TX;
             }
-            case TCP_NMAP_T2_P1:
-            case TCP_NMAP_T3_P1: {
+            case TCP_NMAP_T6_P1: {
                 return XDP_TX;
             }
-            case TCP_NMAP_T4_P1:
-            case TCP_NMAP_T6_P1:
-            case TCP_NMAP_T7_P1:
-            {
+            case TCP_NMAP_T7_P1: {
+                return XDP_TX;
+            }
+            case TCP_NMAP_T2_P1: {
                 return XDP_DROP;
             }
+
 
             case TCP_NMAP_NONE: {
 #ifdef DEBUG
