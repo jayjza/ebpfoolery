@@ -34,9 +34,9 @@ sequence_probes = [
 
             },
             'TCP' : {
-                'window': 8192,
+                'window': 65535,
                 'flags': 'SA',
-                'options': [('MSS', 1460), ('NOP', None), ('WScale', 8), ('SAckOK', b'')],
+                'options': [('MSS', 1460), ('NOP', None), ('WScale', 6), ('SAckOK', b'')],
             }
         },
         id='Packet_1'
@@ -55,9 +55,9 @@ sequence_probes = [
 
             },
             'TCP' : {
-                'window': 8192,
+                'window': 65535,
                 'flags': 'SA',
-                'options': [('MSS', 1460), ('NOP', None), ('WScale', 8), ('SAckOK', b'')],
+                'options': [('MSS', 1400), ('NOP', None), ('WScale', 6), ('SAckOK', b'')],
             }
         },
         id='Packet_2'
@@ -77,9 +77,9 @@ sequence_probes = [
 
             },
             'TCP' : {
-                'window': 8192,
+                'window': 65535,
                 'flags': 'SA',
-                'options': [('MSS', 1460), ('NOP', None), ('WScale', 8), ('NOP', None), ('NOP', None)],
+                'options': [('MSS', 640), ('NOP', None), ('WScale', 6), ('NOP', None), ('NOP', None)],
             }
         },
         id='Packet_3'
@@ -97,9 +97,9 @@ sequence_probes = [
 
             },
             'TCP' : {
-                'window': 8192,
+                'window': 65535,
                 'flags': 'SA',
-                'options': [('MSS', 1460), ('NOP', None), ('WScale', 8), ('SAckOK', b'')],
+                'options': [('MSS', 1460), ('NOP', None), ('WScale', 6), ('SAckOK', b'')],
             }
         },
         id='Packet_4'
@@ -118,9 +118,9 @@ sequence_probes = [
 
             },
             'TCP' : {
-                'window': 8192,
+                'window': 65535,
                 'flags': 'SA',
-                'options': [('MSS', 1460), ('NOP', None), ('WScale', 8), ('SAckOK', b'')],
+                'options': [('MSS', 536), ('NOP', None), ('WScale', 6), ('SAckOK', b'')],
             }
         },
         id='Packet_5'
@@ -137,9 +137,9 @@ sequence_probes = [
 
             },
             'TCP' : {
-                'window': 8192,
+                'window': 65535,
                 'flags': 'SA',
-                'options': [('MSS', 1460), ('SAckOK', b'')],
+                'options': [('MSS', 265), ('SAckOK', b'')],
             }
         },
         id='Packet_6'

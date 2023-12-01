@@ -554,7 +554,7 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 tcp->urg_ptr = 0;
                 tcp->res1 = 0;
 
-                tcp->window = htons(8192);
+                tcp->window = htons(65535);
 
                 // Swap src/dst TCP
                 uint16_t src_tcp_port = tcp->source;
@@ -604,8 +604,10 @@ int xdp_prog1(struct CTXTYPE *ctx) {
 
                 tcp->ack_seq = htonl(ntohl(tcp->seq) + 1);
                 tcp->seq = htonl(bpf_get_prandom_u32());       // Generate a random sequence number for TCP
+#ifdef DEBUG
                 bpf_trace_printk("TCP Sequence NR %d", tcp->seq);
-                tcp->window = htons(8192);
+#endif
+                tcp->window = htons(65535);
 
                 // Swap src/dst TCP
                 uint16_t src_tcp_port = tcp->source;
@@ -661,7 +663,7 @@ int xdp_prog1(struct CTXTYPE *ctx) {
 
                 tcp->seq = htonl(bpf_get_prandom_u32());       // Generate a random sequence number for TCP
                 bpf_trace_printk("TCP Sequence NR %d", tcp->seq);
-                tcp->window = htons(8192);
+                tcp->window = htons(65535);
 
                 // Swap src/dst TCP
                 uint16_t src_tcp_port = tcp->source;
@@ -713,7 +715,7 @@ int xdp_prog1(struct CTXTYPE *ctx) {
 
                 tcp->seq = htonl(bpf_get_prandom_u32());       // Generate a random sequence number for TCP
                 bpf_trace_printk("TCP Sequence NR %d", tcp->seq);
-                tcp->window = htons(8192);
+                tcp->window = htons(65535);
 
                 // Swap src/dst TCP
                 uint16_t src_tcp_port = tcp->source;
@@ -786,7 +788,7 @@ int xdp_prog1(struct CTXTYPE *ctx) {
 
                 tcp->seq = htonl(bpf_get_prandom_u32());       // Generate a random sequence number for TCP
                 bpf_trace_printk("TCP Sequence NR %d", tcp->seq);
-                tcp->window = htons(8192);
+                tcp->window = htons(65535);
 
                 // Swap src/dst TCP
                 uint16_t src_tcp_port = tcp->source;
@@ -839,7 +841,7 @@ int xdp_prog1(struct CTXTYPE *ctx) {
 
                 tcp->seq = htonl(bpf_get_prandom_u32());       // Generate a random sequence number for TCP
                 bpf_trace_printk("TCP Sequence NR %d", tcp->seq);
-                tcp->window = htons(8192);
+                tcp->window = htons(65535);
 
                 // Swap src/dst TCP
                 uint16_t src_tcp_port = tcp->source;
@@ -890,7 +892,7 @@ int xdp_prog1(struct CTXTYPE *ctx) {
 
                 tcp->seq = htonl(bpf_get_prandom_u32());       // Generate a random sequence number for TCP
                 bpf_trace_printk("TCP Sequence NR %d", tcp->seq);
-                tcp->window = htons(8192);
+                tcp->window = htons(65535);
 
                 // Swap src/dst TCP
                 uint16_t src_tcp_port = tcp->source;
@@ -981,7 +983,9 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 return XDP_TX;
             }
             case TCP_NMAP_T2_P1:
-            case TCP_NMAP_T3_P1:
+            case TCP_NMAP_T3_P1: {
+                return XDP_TX;
+            }
             case TCP_NMAP_T4_P1:
             case TCP_NMAP_T6_P1:
             case TCP_NMAP_T7_P1:
