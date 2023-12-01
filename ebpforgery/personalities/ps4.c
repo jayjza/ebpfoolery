@@ -452,18 +452,19 @@ int xdp_prog1(struct CTXTYPE *ctx) {
     bpf_trace_printk("Ether Proto: 0x%x", h_proto);
 #endif
 
-    u_int32_t ip_id_idx = 0;
-    u_int32_t *ip_id = ip_identification.lookup(&ip_id_idx);
-    // Initialize the identifier with a pseudo-random value
-    if (!ip_id)
-    {
-        return DEFAULT_ACTION;
-    }
-    if (*ip_id == 0) {
-        *ip_id = bpf_get_prandom_u32();
-    }
-    // We need to increment the value for each packet.
-    (*ip_id)++;
+    // u_int32_t ip_id_idx = 0;
+    // u_int32_t *ip_id = ip_identification.lookup(&ip_id_idx);
+    // // Initialize the identifier with a pseudo-random value
+    // if (!ip_id)
+    // {
+    //     return DEFAULT_ACTION;
+    // }
+    // if (*ip_id == 0) {
+    //     *ip_id = bpf_get_prandom_u32();
+    // }
+    // // We need to increment the value for each packet.
+    // (*ip_id)++;
+    u_int32_t ip_id = bpf_get_prandom_u32();
 
     struct iphdr *ip = data + sizeof(*eth);
 
@@ -584,7 +585,7 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 // Set TTL to 64
                 ip->ttl = 64;
                 // Set the IP identification field
-                ip->id = htons((*ip_id));
+                ip->id = htons(ip_id);
 
                 // Swap src/dst IP
                 uint32_t src_ip = ip->saddr;
@@ -642,7 +643,7 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 // Set TTL to 128
                 ip->ttl = 64;
                 // Set the IP identification field
-                ip->id = htons((*ip_id));
+                ip->id = htons(ip_id);
 
                 // Swap src/dst IP
                 uint32_t src_ip = ip->saddr;
@@ -694,7 +695,7 @@ int xdp_prog1(struct CTXTYPE *ctx) {
 
                 // Update the IP packet
                 // Set the IP identification field
-                ip->id = htons((*ip_id));
+                ip->id = htons(ip_id);
 
                 // Swap src/dst IP
                 uint32_t src_ip = ip->saddr;
@@ -746,7 +747,7 @@ int xdp_prog1(struct CTXTYPE *ctx) {
 
                 // Update the IP packet
                 // Set the IP identification field
-                ip->id = htons((*ip_id));
+                ip->id = htons(ip_id);
 
                 // Swap src/dst IP
                 uint32_t src_ip = ip->saddr;
@@ -820,7 +821,7 @@ int xdp_prog1(struct CTXTYPE *ctx) {
 
                 // Update the IP packet
                 // Set the IP identification field
-                ip->id = htons((*ip_id));
+                ip->id = htons(ip_id);
 
                 // Swap src/dst IP
                 uint32_t src_ip = ip->saddr;
@@ -872,7 +873,7 @@ int xdp_prog1(struct CTXTYPE *ctx) {
 
                 // Update the IP packet
                 // Set the IP identification field
-                ip->id = htons((*ip_id));
+                ip->id = htons(ip_id);
 
                 // Swap src/dst IP
                 uint32_t src_ip = ip->saddr;
@@ -922,7 +923,7 @@ int xdp_prog1(struct CTXTYPE *ctx) {
 
                 // Update the IP packet
                 // Set the IP identification field
-                ip->id = htons((*ip_id));
+                ip->id = htons(ip_id);
 
                 // Swap src/dst IP
                 uint32_t src_ip = ip->saddr;
@@ -982,7 +983,7 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 ip->ttl = 64;
                 ip->tot_len = htons(60);
                 // Set the IP identification field
-                ip->id = htons((*ip_id));
+                ip->id = htons(ip_id);
 
                 // Swap src/dst IP
                 uint32_t src_ip = ip->saddr;
@@ -1026,7 +1027,7 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 ip->ttl = 64;
                 ip->tot_len = htons(40);
                 // Set the IP identification field
-                ip->id = htons((*ip_id));
+                ip->id = htons(ip_id);
 
                 // Swap src/dst IP
                 uint32_t src_ip = ip->saddr;
@@ -1066,7 +1067,7 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 ip->ttl = 64;
                 ip->tot_len = htons(40);
                 // Set the IP identification field
-                ip->id = htons((*ip_id));
+                ip->id = htons(ip_id);
 
                 // Swap src/dst IP
                 uint32_t src_ip = ip->saddr;
@@ -1114,7 +1115,7 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 ip->ttl = 64;
                 ip->tot_len = htons(40);
                 // Set the IP identification field
-                ip->id = htons((*ip_id));
+                ip->id = htons(ip_id);
 
                 // Swap src/dst IP
                 uint32_t src_ip = ip->saddr;
@@ -1166,7 +1167,7 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 ip->ttl = 64;
                 ip->tot_len = htons(40);
                 // Set the IP identification field
-                ip->id = htons((*ip_id));
+                ip->id = htons(ip_id);
 
                 // Swap src/dst IP
                 uint32_t src_ip = ip->saddr;
@@ -1311,7 +1312,7 @@ int xdp_prog1(struct CTXTYPE *ctx) {
         // Set TTL to 128
         ip->ttl = 64;
         // Set the IP identification field
-        ip->id = htons((*ip_id));
+        ip->id = htons(ip_id);
 
 
         // Swap src/dst IP
@@ -1370,8 +1371,8 @@ int xdp_prog1(struct CTXTYPE *ctx) {
         // Set TTL to 128
         ip->ttl = 64;
         // Set the IP identification field
-        *ip_id = ((*ip_id) + 1003);
-        ip->id = htons((*ip_id));
+        // *ip_id = ((*ip_id) + 1003);
+        ip->id = htons(ip_id);
 
         // Swap src/dst IP
         uint32_t src_ip = ip->saddr;
