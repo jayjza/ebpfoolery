@@ -1186,7 +1186,7 @@ int xdp_prog1(struct CTXTYPE *ctx) {
 
         // Build ICMP echo reply
         // icmp->code = 0;
-        // icmp->type = 0;
+        icmp->type = 0;
         // Update checksum
         icmp->checksum = 0;
 
