@@ -542,19 +542,18 @@ int xdp_prog1(struct CTXTYPE *ctx) {
         // check_options2(tcp, data_end);
         u_int8_t nmap_result = detect_nmap_probes(data_end, tcp, ip);
         u64 current_time = bpf_ktime_get_ns();
-        u_int32_t timestampValue = (uint32_t)(current_time/1000000);
+        u_int32_t timestampValue = (uint32_t)(current_time/10000000);
 #ifdef DEBUG
         bpf_trace_printk("Timestamp: %d", timestampValue);
         bpf_trace_printk("detect_nmap_probes %d", nmap_result);
 #endif
         switch(nmap_result) {
             case TCP_NMAP_ECN: {
-                // ECN(R=Y%DF=Y%T=7B-85%TG=80%W=2000%O=M5B4NW8NNS%CC=N%Q=)
                 // Fix TCP header
                 // Set Syn/Ack/ECE on the TCP header
                 tcp->syn = 1;
                 tcp->ack = 1;
-                tcp->ece = 1;
+                tcp->ece = 0;
                 tcp->cwr = 0;
                 tcp->urg_ptr = 0;
                 tcp->res1 = 0;
@@ -602,24 +601,6 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 return XDP_TX;
             }
             case TCP_NMAP_T1_P1: {
-                /* SEQ1
-                if (nmap(seq1))
-                {
-                    set(df, 1);
-                    set(ttl, 128);
-                    set(ack, this+1);
-                    set(flags, ack|syn);
-
-                    set(win, 8192);
-                    insert(mss,1460);
-                    insert(wscale,8);
-                    insert(sackOK);
-                    insert(timestamp);
-
-                    reply;
-                }
-                */
-
                 // Fix TCP header
                 // Set Syn/Ack on the TCP header
                 tcp->syn = 1;
@@ -674,22 +655,8 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 swap_mac((uint8_t *)eth->h_source, (uint8_t *)eth->h_dest);
                 bpf_trace_printk("NMAP detection found probe 1 of test 1");
                 return XDP_TX;
-                // return rc;
             }
             case TCP_NMAP_T1_P2: {
-                /*
-                if (nmap(seq2))
-                {
-                    set(flags, ack|syn);
-                    set(win, 8192);
-                    insert(mss,1460);
-                    insert(wscale,8);
-                    insert(sackOK);
-                    insert(timestamp);
-
-                    reply;
-                }
-                */
                 // Fix TCP header
                 // Set Syn/Ack on the TCP header
                 tcp->syn = 1;
@@ -742,18 +709,6 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 return XDP_TX;
             }
             case TCP_NMAP_T1_P3: {
-                /*
-                if (option(nop) && option(wscale) && option(mss))
-                {
-                    set(flags, ack|syn);
-                    set(win, 8192);
-                    insert(mss,1460);
-                    insert(wscale,8);
-                    insert(timestamp);
-
-                    reply;
-                }
-                */
                 // Fix TCP header
                 // Set Syn/Ack on the TCP header
                 tcp->syn = 1;
@@ -806,19 +761,6 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 return XDP_TX;
             }
             case TCP_NMAP_T1_P4: {
-                /*
-                if (option(sackOK) && option(wscale) && option(eol))
-                {
-                    set(flags, ack|syn);
-                    set(win, 8192);
-                    insert(mss,1460);
-                    insert(wscale,8);
-                    insert(sackOK);
-                    insert(timestamp);
-
-                    reply;
-                }
-                */
                 // For probe4 we need to make the buffer slightly bigger
                 if (bpf_xdp_adjust_tail(ctx, 4))
                 {
@@ -894,17 +836,6 @@ int xdp_prog1(struct CTXTYPE *ctx) {
             }
             case TCP_NMAP_T1_P5: {
                 /* SEQ5
-                if (option(mss) && option(sackOK) && option(wscale) && option(eol))
-                {
-                    set(flags, ack|syn);
-                    set(win, 8192);
-                    insert(mss,1460);
-                    insert(wscale,8);
-                    insert(sackOK);
-                    insert(timestamp);
-
-                    reply;
-                }
                 */
                 // Fix TCP header
                 // Set Syn/Ack on the TCP header
@@ -1019,11 +950,115 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 bpf_trace_printk("NMAP detection found probe 6 of test 1");
                 return XDP_TX;
             }
+            case TCP_NMAP_T3_P1:
             case TCP_NMAP_T5_P1:
+            case TCP_NMAP_T7_P1:
             {
                 // Update TCP packet
                 tcp->window = htons(0);
                 tcp->ack_seq = htonl(ntohl(tcp->seq) + 1);
+                tcp->seq = htons(0);
+                tcp->ack = 1;
+                tcp->rst = 1;
+                tcp->syn = 0;
+                tcp->ece = 0;
+                tcp->cwr = 0;
+                tcp->urg = 0;
+                tcp->psh = 0;
+                tcp->fin = 0;
+                tcp->urg_ptr = 0;
+                tcp->res1 = 0;
+                tcp->doff = 5;
+                tcp->check = 0;
+
+                // Swap src/dst TCP
+                uint16_t src_tcp_port = tcp->source;
+                tcp->source = tcp->dest;
+                tcp->dest = src_tcp_port;
+
+                update_ip_checksum(tcp, sizeof(struct tcphdr), &tcp->check);
+
+                // Update the IP packet
+                // Set IP don't fragment
+                ip->frag_off = ip->frag_off | ntohs(IP_DF);
+                ip->ttl = 128;
+                ip->tot_len = htons(40);
+                // Set the IP identification field
+                ip->id = htons((*ip_id));
+
+                // Swap src/dst IP
+                uint32_t src_ip = ip->saddr;
+                ip->saddr = ip->daddr;
+                ip->daddr = src_ip;
+                // Recalculate IP checksum
+                update_ip_checksum(ip, sizeof(struct iphdr), &ip->check);
+
+                // Update the ethernet packet
+                swap_mac((uint8_t *)eth->h_source, (uint8_t *)eth->h_dest);
+
+                // Since we don't have options in the packet anymore we need to chop it off.
+                if (bpf_xdp_adjust_tail(ctx, 0 - 20))
+                {
+                    bpf_trace_printk("Error: Failed to remote options from packet.");
+                    return DEFAULT_ACTION;
+                }
+
+                bpf_trace_printk("Sending TCP_NMAP_T5_P1");
+                return XDP_TX;
+            }
+            case TCP_NMAP_T4_P1:
+            case TCP_NMAP_T6_P1:
+            {
+                // Update TCP packet
+                tcp->window = htons(0);
+                tcp->seq = tcp->ack_seq;
+                tcp->ack_seq = htonl(bpf_get_prandom_u32());
+                tcp->ack = 0;
+                tcp->rst = 1;
+                tcp->syn = 0;
+                tcp->doff = 5;
+                tcp->check = 0;
+
+                // Swap src/dst TCP
+                uint16_t src_tcp_port = tcp->source;
+                tcp->source = tcp->dest;
+                tcp->dest = src_tcp_port;
+
+                update_ip_checksum(tcp, sizeof(struct tcphdr), &tcp->check);
+
+                // Update the IP packet
+                // Set IP don't fragment
+                ip->frag_off = ip->frag_off | ntohs(IP_DF);
+                ip->ttl = 128;
+                ip->tot_len = htons(40);
+                // Set the IP identification field
+                ip->id = htons((*ip_id));
+
+                // Swap src/dst IP
+                uint32_t src_ip = ip->saddr;
+                ip->saddr = ip->daddr;
+                ip->daddr = src_ip;
+                // Recalculate IP checksum
+                update_ip_checksum(ip, sizeof(struct iphdr), &ip->check);
+
+                // Update the ethernet packet
+                swap_mac((uint8_t *)eth->h_source, (uint8_t *)eth->h_dest);
+
+                // Since we don't have options in the packet anymore we need to chop it off.
+                if (bpf_xdp_adjust_tail(ctx, 0 - 20))
+                {
+                    bpf_trace_printk("Error: Failed to remote options from packet.");
+                    return DEFAULT_ACTION;
+                }
+
+                bpf_trace_printk("Sending TCP_NMAP_T5_P1");
+                return XDP_TX;
+            }
+            case TCP_NMAP_T2_P1:
+            {
+                // Update TCP packet
+                tcp->window = htons(0);
+                tcp->ack_seq = tcp->seq;
                 tcp->seq = htons(0);
                 tcp->ack = 1;
                 tcp->rst = 1;
@@ -1066,14 +1101,9 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 bpf_trace_printk("Sending TCP_NMAP_T5_P1");
                 return XDP_TX;
             }
-            case TCP_NMAP_T2_P1:
-            case TCP_NMAP_T3_P1:
-            case TCP_NMAP_T4_P1:
-            case TCP_NMAP_T6_P1:
-            case TCP_NMAP_T7_P1:
-            {
-                return XDP_DROP;
-            }
+            // {
+            //     return XDP_DROP;
+            // }
 
             case TCP_NMAP_NONE: {
 #ifdef DEBUG

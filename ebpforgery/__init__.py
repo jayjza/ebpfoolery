@@ -2,7 +2,7 @@ from bcc import BPF
 from os import path
 
 # We likely make this a list of the personalities directory
-AVAILABLE_PERSONALITIES = ['win2016', 'ps4']
+AVAILABLE_PERSONALITIES = ['win2016', 'ps4', 'xbox1']
 
 def forge_ippers(personality, interface):
     flags = 0
