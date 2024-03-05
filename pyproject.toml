@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "ebpforgery"
+name = "ebpfoolery"
 version = "0.1.0"
 description = "Ippers in ebpf"
 authors = ["Jay", "Francois"]

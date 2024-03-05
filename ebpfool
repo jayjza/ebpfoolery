@@ -20,7 +20,7 @@ bool_choices = [
     'No'
 ]
 
-from ebpforgery import forge_ippers, AVAILABLE_PERSONALITIES
+from ebpfoolery import fool_ippers, AVAILABLE_PERSONALITIES
 
 def _validate_personality_exists(ctx, param, value):
     print(value)
@@ -32,7 +32,7 @@ def _validate_personality_exists(ctx, param, value):
 @click.group()
 def cli():
     """
-    Welcome to The Ippers Forge
+    Welcome to some Tom eBPFoolery
     """
     pass
 
@@ -43,7 +43,7 @@ def ippers(personality, interface):
     """
     Forges your machine into a weapon of deception
     """
-    forge_ippers(personality, interface)
+    fool_ippers(personality, interface)
 
 
 if __name__ == '__main__':
