@@ -52,4 +52,4 @@ if [[ "$VIRTUAL_ENV" != "" ]]; then
 else
   echo "We detected you are not in a virtual environment. Using system python3."
 fi
-sudo $PYTHON3 ebpfoool ippers "$PERSONALITY" "$INTERFACE"
+sudo $PYTHON3 ebpfool ippers "$PERSONALITY" "$INTERFACE"
