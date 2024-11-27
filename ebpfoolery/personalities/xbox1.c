@@ -148,12 +148,12 @@ static inline int parse_ipv6(void *data, u64 nh_off, void *data_end) {
     return ip6h->nexthdr;
 }
 
-static inline void swap_mac(__u8 *src_mac, uint8_t *dst_mac)
+static inline void swap_mac(__u8 *src_mac, __u8 *dst_mac)
 {
     int i;
     for (i = 0; i < 6; i++)
     {
-        uint8_t tmp_src;
+        __u8 tmp_src;
         tmp_src = *(src_mac + i);
         *(src_mac + i) = *(dst_mac + i);
         *(dst_mac + i) = tmp_src;
@@ -162,13 +162,13 @@ static inline void swap_mac(__u8 *src_mac, uint8_t *dst_mac)
 
 // Update IP checksum for IP header, as specified in RFC 1071
 // The checksum_location is passed as a pointer. At this location 16 bits need to be set to 0.
-static inline void update_ip_checksum(void *data, int len, uint16_t *checksum_location)
+static inline void update_ip_checksum(void *data, int len, __u16 *checksum_location)
 {
-    uint32_t accumulator = 0;
+    __u32 accumulator = 0;
     int i;
     for (i = 0; i < len; i += 2)
     {
-        uint16_t val;
+        __u16 val;
         // If we are currently at the checksum_location, set to zero
         if (data + i == checksum_location)
         {
@@ -177,13 +177,13 @@ static inline void update_ip_checksum(void *data, int len, uint16_t *checksum_lo
         else
         {
             // Else we load two bytes of data into val
-            val = *(uint16_t *)(data + i);
+            val = *(__u16 *)(data + i);
         }
         accumulator += val;
     }
 
     // Add 16 bits overflow back to accumulator (if necessary)
-    uint16_t overflow = accumulator >> 16;
+    __u16 overflow = accumulator >> 16;
     accumulator &= 0x00FFFF;
     accumulator += overflow;
 
@@ -192,7 +192,7 @@ static inline void update_ip_checksum(void *data, int len, uint16_t *checksum_lo
     accumulator &= 0x00FFFF;
 
     // Invert bits and set the checksum at checksum_location
-    uint16_t chk = accumulator ^ 0xFFFF;
+    __u16 chk = accumulator ^ 0xFFFF;
 
 #ifdef DEBUG
     bpf_printk("Checksum: %u", chk);
@@ -232,7 +232,7 @@ static inline void check_flags(struct tcphdr* tcp) {
     // Add more checks for other TCP flags as needed
 }
 
-static inline uint8_t detect_nmap_probes(void* data_end, struct tcphdr* tcp, struct iphdr *ip) {
+static inline __u8 detect_nmap_probes(void* data_end, struct tcphdr* tcp, struct iphdr *ip) {
     u_int32_t options_len = tcp->doff*4 - sizeof(struct tcphdr);
 
 #ifdef DEBUG
@@ -253,7 +253,7 @@ static inline uint8_t detect_nmap_probes(void* data_end, struct tcphdr* tcp, str
     void *options_start = (void *) tcp + sizeof(struct tcphdr);
 
     void * cursor = options_start;
-    uint16_t i;
+    __u16 i;
     u_int16_t flags = ntohs(tcp_flag_word(tcp)) & 0x00FF;    // We only want a part of the word, and we only want the flag field
             // TODO: We need to check if the ports is open / closed, but we cannot determine that right now from XDP
 
@@ -424,7 +424,7 @@ int xdp_prog1(struct CTXTYPE *ctx) {
     void* data = (void*)(long)ctx->data;
 
     int rc = DEFAULT_ACTION;
-    uint16_t h_proto;           //! Protocol value inside the ethernet header
+    __u16 h_proto;           //! Protocol value inside the ethernet header
 
 #ifdef DEBUG
     bpf_trace_printk("Running XDP program");
@@ -489,16 +489,16 @@ int xdp_prog1(struct CTXTYPE *ctx) {
 #endif
 
 // struct iphdr {
-//     uint8_t  ihl_version;  // Internet Header Length (4 bits) + Version (4 bits)
-//     uint8_t  tos;          // Type of Service
-//     uint16_t tot_len;      // Total Length
-//     uint16_t id;           // Identification
-//     uint16_t frag_off;     // Fragment Offset + Flags
-//     uint8_t  ttl;          // Time to Live
-//     uint8_t  protocol;     // Protocol (e.g., TCP, UDP, ICMP)
-//     uint16_t check;        // Header Checksum
-//     uint32_t saddr;        // Source IP Address
-//     uint32_t daddr;        // Destination IP Address
+//     __u8  ihl_version;  // Internet Header Length (4 bits) + Version (4 bits)
+//     __u8  tos;          // Type of Service
+//     __u16 tot_len;      // Total Length
+//     __u16 id;           // Identification
+//     __u16 frag_off;     // Fragment Offset + Flags
+//     __u8  ttl;          // Time to Live
+//     __u8  protocol;     // Protocol (e.g., TCP, UDP, ICMP)
+//     __u16 check;        // Header Checksum
+//     __u32 saddr;        // Source IP Address
+//     __u32 daddr;        // Destination IP Address
 //     // Options and padding may be present
 // };
 
@@ -542,7 +542,7 @@ int xdp_prog1(struct CTXTYPE *ctx) {
         // check_options2(tcp, data_end);
         u_int8_t nmap_result = detect_nmap_probes(data_end, tcp, ip);
         u64 current_time = bpf_ktime_get_ns();
-        u_int32_t timestampValue = (uint32_t)(current_time/10000000);
+        u_int32_t timestampValue = (__u32)(current_time/10000000);
 #ifdef DEBUG
         bpf_trace_printk("Timestamp: %d", timestampValue);
         bpf_trace_printk("detect_nmap_probes %d", nmap_result);
@@ -561,7 +561,7 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 tcp->window = htons(8192);
 
                 // Swap src/dst TCP
-                uint16_t src_tcp_port = tcp->source;
+                __u16 src_tcp_port = tcp->source;
                 tcp->source = tcp->dest;
                 tcp->dest = src_tcp_port;
 
@@ -589,14 +589,14 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 ip->id = htons((*ip_id));
 
                 // Swap src/dst IP
-                uint32_t src_ip = ip->saddr;
+                __u32 src_ip = ip->saddr;
                 ip->saddr = ip->daddr;
                 ip->daddr = src_ip;
                 // Recalculate IP checksum
                 update_ip_checksum(ip, sizeof(struct iphdr), &ip->check);
 
                 // Update the ethernet packet
-                swap_mac((uint8_t *)eth->h_source, (uint8_t *)eth->h_dest);
+                swap_mac((__u8 *)eth->h_source, (__u8 *)eth->h_dest);
                 bpf_trace_printk("NMAP detection found ECN test");
                 return XDP_TX;
             }
@@ -612,7 +612,7 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 tcp->window = htons(8192);
 
                 // Swap src/dst TCP
-                uint16_t src_tcp_port = tcp->source;
+                __u16 src_tcp_port = tcp->source;
                 tcp->source = tcp->dest;
                 tcp->dest = src_tcp_port;
 
@@ -645,14 +645,14 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 ip->id = htons((*ip_id));
 
                 // Swap src/dst IP
-                uint32_t src_ip = ip->saddr;
+                __u32 src_ip = ip->saddr;
                 ip->saddr = ip->daddr;
                 ip->daddr = src_ip;
                 // Recalculate IP checksum
                 update_ip_checksum(ip, sizeof(struct iphdr), &ip->check);
 
                 // Update the ethernet packet
-                swap_mac((uint8_t *)eth->h_source, (uint8_t *)eth->h_dest);
+                swap_mac((__u8 *)eth->h_source, (__u8 *)eth->h_dest);
                 bpf_trace_printk("NMAP detection found probe 1 of test 1");
                 return XDP_TX;
             }
@@ -667,7 +667,7 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 tcp->window = htons(8192);
 
                 // Swap src/dst TCP
-                uint16_t src_tcp_port = tcp->source;
+                __u16 src_tcp_port = tcp->source;
                 tcp->source = tcp->dest;
                 tcp->dest = src_tcp_port;
 
@@ -696,14 +696,14 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 ip->id = htons((*ip_id));
 
                 // Swap src/dst IP
-                uint32_t src_ip = ip->saddr;
+                __u32 src_ip = ip->saddr;
                 ip->saddr = ip->daddr;
                 ip->daddr = src_ip;
                 // Recalculate IP checksum
                 update_ip_checksum(ip, sizeof(struct iphdr), &ip->check);
 
                 // Update the ethernet packet
-                swap_mac((uint8_t *)eth->h_source, (uint8_t *)eth->h_dest);
+                swap_mac((__u8 *)eth->h_source, (__u8 *)eth->h_dest);
 
                 bpf_trace_printk("NMAP detection found probe 2 of test 1");
                 return XDP_TX;
@@ -719,7 +719,7 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 tcp->window = htons(8192);
 
                 // Swap src/dst TCP
-                uint16_t src_tcp_port = tcp->source;
+                __u16 src_tcp_port = tcp->source;
                 tcp->source = tcp->dest;
                 tcp->dest = src_tcp_port;
 
@@ -748,14 +748,14 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 ip->id = htons((*ip_id));
 
                 // Swap src/dst IP
-                uint32_t src_ip = ip->saddr;
+                __u32 src_ip = ip->saddr;
                 ip->saddr = ip->daddr;
                 ip->daddr = src_ip;
                 // Recalculate IP checksum
                 update_ip_checksum(ip, sizeof(struct iphdr), &ip->check);
 
                 // Update the ethernet packet
-                swap_mac((uint8_t *)eth->h_source, (uint8_t *)eth->h_dest);
+                swap_mac((__u8 *)eth->h_source, (__u8 *)eth->h_dest);
 
                 bpf_trace_printk("NMAP detection found probe 3 of test 1");
                 return XDP_TX;
@@ -792,7 +792,7 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 tcp->window = htons(8192);
 
                 // Swap src/dst TCP
-                uint16_t src_tcp_port = tcp->source;
+                __u16 src_tcp_port = tcp->source;
                 tcp->source = tcp->dest;
                 tcp->dest = src_tcp_port;
 
@@ -822,14 +822,14 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 ip->id = htons((*ip_id));
 
                 // Swap src/dst IP
-                uint32_t src_ip = ip->saddr;
+                __u32 src_ip = ip->saddr;
                 ip->saddr = ip->daddr;
                 ip->daddr = src_ip;
                 // Recalculate IP checksum
                 update_ip_checksum(ip, sizeof(struct iphdr), &ip->check);
 
                 // Update the ethernet packet
-                swap_mac((uint8_t *)eth->h_source, (uint8_t *)eth->h_dest);
+                swap_mac((__u8 *)eth->h_source, (__u8 *)eth->h_dest);
 
                 bpf_trace_printk("NMAP detection found probe 4 of test 1");
                 return XDP_TX;
@@ -847,7 +847,7 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 tcp->window = htons(8192);
 
                 // Swap src/dst TCP
-                uint16_t src_tcp_port = tcp->source;
+                __u16 src_tcp_port = tcp->source;
                 tcp->source = tcp->dest;
                 tcp->dest = src_tcp_port;
 
@@ -876,14 +876,14 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 ip->id = htons((*ip_id));
 
                 // Swap src/dst IP
-                uint32_t src_ip = ip->saddr;
+                __u32 src_ip = ip->saddr;
                 ip->saddr = ip->daddr;
                 ip->daddr = src_ip;
                 // Recalculate IP checksum
                 update_ip_checksum(ip, sizeof(struct iphdr), &ip->check);
 
                 // Update the ethernet packet
-                swap_mac((uint8_t *)eth->h_source, (uint8_t *)eth->h_dest);
+                swap_mac((__u8 *)eth->h_source, (__u8 *)eth->h_dest);
                 bpf_trace_printk("NMAP detection found probe 5 of test 1");
                 return XDP_TX;
             }
@@ -910,7 +910,7 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 tcp->window = htons(8192);
 
                 // Swap src/dst TCP
-                uint16_t src_tcp_port = tcp->source;
+                __u16 src_tcp_port = tcp->source;
                 tcp->source = tcp->dest;
                 tcp->dest = src_tcp_port;
 
@@ -938,14 +938,14 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 ip->id = htons((*ip_id));
 
                 // Swap src/dst IP
-                uint32_t src_ip = ip->saddr;
+                __u32 src_ip = ip->saddr;
                 ip->saddr = ip->daddr;
                 ip->daddr = src_ip;
                 // Recalculate IP checksum
                 update_ip_checksum(ip, sizeof(struct iphdr), &ip->check);
 
                 // Update the ethernet packet
-                swap_mac((uint8_t *)eth->h_source, (uint8_t *)eth->h_dest);
+                swap_mac((__u8 *)eth->h_source, (__u8 *)eth->h_dest);
 
                 bpf_trace_printk("NMAP detection found probe 6 of test 1");
                 return XDP_TX;
@@ -972,7 +972,7 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 tcp->check = 0;
 
                 // Swap src/dst TCP
-                uint16_t src_tcp_port = tcp->source;
+                __u16 src_tcp_port = tcp->source;
                 tcp->source = tcp->dest;
                 tcp->dest = src_tcp_port;
 
@@ -987,14 +987,14 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 ip->id = htons((*ip_id));
 
                 // Swap src/dst IP
-                uint32_t src_ip = ip->saddr;
+                __u32 src_ip = ip->saddr;
                 ip->saddr = ip->daddr;
                 ip->daddr = src_ip;
                 // Recalculate IP checksum
                 update_ip_checksum(ip, sizeof(struct iphdr), &ip->check);
 
                 // Update the ethernet packet
-                swap_mac((uint8_t *)eth->h_source, (uint8_t *)eth->h_dest);
+                swap_mac((__u8 *)eth->h_source, (__u8 *)eth->h_dest);
 
                 // Since we don't have options in the packet anymore we need to chop it off.
                 if (bpf_xdp_adjust_tail(ctx, 0 - 20))
@@ -1020,7 +1020,7 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 tcp->check = 0;
 
                 // Swap src/dst TCP
-                uint16_t src_tcp_port = tcp->source;
+                __u16 src_tcp_port = tcp->source;
                 tcp->source = tcp->dest;
                 tcp->dest = src_tcp_port;
 
@@ -1035,14 +1035,14 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 ip->id = htons((*ip_id));
 
                 // Swap src/dst IP
-                uint32_t src_ip = ip->saddr;
+                __u32 src_ip = ip->saddr;
                 ip->saddr = ip->daddr;
                 ip->daddr = src_ip;
                 // Recalculate IP checksum
                 update_ip_checksum(ip, sizeof(struct iphdr), &ip->check);
 
                 // Update the ethernet packet
-                swap_mac((uint8_t *)eth->h_source, (uint8_t *)eth->h_dest);
+                swap_mac((__u8 *)eth->h_source, (__u8 *)eth->h_dest);
 
                 // Since we don't have options in the packet anymore we need to chop it off.
                 if (bpf_xdp_adjust_tail(ctx, 0 - 20))
@@ -1067,7 +1067,7 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 tcp->check = 0;
 
                 // Swap src/dst TCP
-                uint16_t src_tcp_port = tcp->source;
+                __u16 src_tcp_port = tcp->source;
                 tcp->source = tcp->dest;
                 tcp->dest = src_tcp_port;
 
@@ -1082,14 +1082,14 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 ip->id = htons((*ip_id));
 
                 // Swap src/dst IP
-                uint32_t src_ip = ip->saddr;
+                __u32 src_ip = ip->saddr;
                 ip->saddr = ip->daddr;
                 ip->daddr = src_ip;
                 // Recalculate IP checksum
                 update_ip_checksum(ip, sizeof(struct iphdr), &ip->check);
 
                 // Update the ethernet packet
-                swap_mac((uint8_t *)eth->h_source, (uint8_t *)eth->h_dest);
+                swap_mac((__u8 *)eth->h_source, (__u8 *)eth->h_dest);
 
                 // Since we don't have options in the packet anymore we need to chop it off.
                 if (bpf_xdp_adjust_tail(ctx, 0 - 20))
@@ -1256,11 +1256,11 @@ int xdp_prog1(struct CTXTYPE *ctx) {
        ip->id = htons((*ip_id));
 
         // Swap src/dst IP
-        uint32_t src_ip = ip->saddr;
+        __u32 src_ip = ip->saddr;
         ip->saddr = ip->daddr;
         ip->daddr = src_ip;
 
-        swap_mac((uint8_t *)eth->h_source, (uint8_t *)eth->h_dest);
+        swap_mac((__u8 *)eth->h_source, (__u8 *)eth->h_dest);
 
         // Recalculate IP checksum
         update_ip_checksum(ip, sizeof(struct iphdr), &ip->check);
@@ -1307,11 +1307,11 @@ int xdp_prog1(struct CTXTYPE *ctx) {
         ip->id = htons((*ip_id));
 
         // Swap src/dst IP
-        uint32_t src_ip = ip->saddr;
+        __u32 src_ip = ip->saddr;
         ip->saddr = ip->daddr;
         ip->daddr = src_ip;
 
-        swap_mac((uint8_t *)eth->h_source, (uint8_t *)eth->h_dest);
+        swap_mac((__u8 *)eth->h_source, (__u8 *)eth->h_dest);
 
         // Recalculate IP checksum
         update_ip_checksum(ip, sizeof(struct iphdr), &ip->check);
