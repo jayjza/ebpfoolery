@@ -135,7 +135,7 @@
 BPF_ARRAY(ip_identification, u_int32_t, 1);
 
 #define MAX_BUFFER_SIZE 512
-u8 buffer[MAX_BUFFER_SIZE];                 //!< A temporary buffer where we can store some data when processing.
+__u8 buffer[MAX_BUFFER_SIZE];                 //!< A temporary buffer where we can store some data when processing.
 
 // static inline int parse_ipv4(void *data, u64 nh_off, void *data_end) {
 //     struct iphdr *iph = data + nh_off;
@@ -545,7 +545,7 @@ int xdp_prog1(struct CTXTYPE *ctx) {
         // check_flags(tcp);
         // check_options2(tcp, data_end);
         u_int8_t nmap_result = detect_nmap_probes(data_end, tcp, ip);
-        u64 current_time = bpf_ktime_get_ns();
+        __u64 current_time = bpf_ktime_get_ns();
         u_int32_t timestampValue = (__u32)(current_time/10000000);
 #ifdef DEBUG
         bpf_printk("Timestamp: %d", timestampValue);
