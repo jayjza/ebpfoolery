@@ -1,4 +1,4 @@
-#include <uapi/linux/bpf.h>
+#include <linux/bpf.h>
 #include <linux/in.h>
 #include <linux/if_ether.h>
 #include <linux/if_packet.h>
@@ -6,7 +6,7 @@
 #include <linux/ip.h>
 #include <linux/ipv6.h>
 #include <linux/icmp.h>
-#include <net/ip.h>
+
 
 #define DEFAULT_ACTION XDP_PASS
 // #define DEBUG 1
