@@ -66,4 +66,4 @@ llvm-check: $(CLANG) $(LLC)
 		-target bpf \
 		$(BPF_CFLAGS) \
 		-Wall $(BPF_EXTRA_FLAGS) \
-		-O2 -c -o $@ $<
+		-O2 -c -g -o $@ $<
