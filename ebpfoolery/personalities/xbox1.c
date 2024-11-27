@@ -427,8 +427,8 @@ static inline __u8 detect_nmap_probes(void* data_end, struct tcphdr* tcp, struct
     return TCP_NMAP_NONE;
 }
 
-
-int xdp_prog1(struct CTXTYPE *ctx) {
+SEC("xdp")
+int xdp_prog1(struct xdp_md *ctx) {
 
     void* data_end = (void*)(long)ctx->data_end;
     void* data = (void*)(long)ctx->data;
@@ -476,7 +476,7 @@ int xdp_prog1(struct CTXTYPE *ctx) {
     }
     // We need to increment the value for each packet.
     // (*ip_id)++;
-    lock_xadd(ip_id, 1);
+    __sync_fetch_and_add(ip_id, 1);
 #ifdef DEBUG
     bpf_printk("IP ID = %d", (*ip_id));
 #endif
