@@ -137,21 +137,21 @@ BPF_ARRAY(ip_identification, u_int32_t, 1);
 #define MAX_BUFFER_SIZE 512
 u8 buffer[MAX_BUFFER_SIZE];                 //!< A temporary buffer where we can store some data when processing.
 
-static inline int parse_ipv4(void *data, u64 nh_off, void *data_end) {
-    struct iphdr *iph = data + nh_off;
+// static inline int parse_ipv4(void *data, u64 nh_off, void *data_end) {
+//     struct iphdr *iph = data + nh_off;
 
-    if ( (void*)&iph[1] > data_end)
-        return 0;
-    return iph->protocol;
-}
+//     if ( (void*)&iph[1] > data_end)
+//         return 0;
+//     return iph->protocol;
+// }
 
-static inline int parse_ipv6(void *data, u64 nh_off, void *data_end) {
-    struct ipv6hdr *ip6h = data + nh_off;
+// static inline int parse_ipv6(void *data, u64 nh_off, void *data_end) {
+//     struct ipv6hdr *ip6h = data + nh_off;
 
-    if ((void*)&ip6h[1] > data_end)
-        return 0;
-    return ip6h->nexthdr;
-}
+//     if ((void*)&ip6h[1] > data_end)
+//         return 0;
+//     return ip6h->nexthdr;
+// }
 
 static inline void swap_mac(__u8 *src_mac, __u8 *dst_mac)
 {
@@ -219,23 +219,23 @@ static inline void update_ip_checksum(void *data, int len, __u16 *checksum_locat
 // The bpf_ntohl() function converts the unsigned integer netlong from network byte order to host byte order.
 // The bpf_ntohs() function converts the unsigned short integer netshort from network byte order to host byte order.
 
-static inline void check_flags(struct tcphdr* tcp) {
-    // Check TCP flags
-    // XMAS: ALL URG,PSH,SYN,FIN
-    if (tcp->syn && tcp->urg && tcp->psh && tcp->fin) {
-        bpf_printk("NMAP Xmas scan");
-    }
-    // if (tcp->syn) {
-    //     // TCP SYN flag is set
-    //     bpf_printk("TCP SYN flag is set");
-    // }
+// static inline void check_flags(struct tcphdr* tcp) {
+//     // Check TCP flags
+//     // XMAS: ALL URG,PSH,SYN,FIN
+//     if (tcp->syn && tcp->urg && tcp->psh && tcp->fin) {
+//         bpf_printk("NMAP Xmas scan");
+//     }
+//     // if (tcp->syn) {
+//     //     // TCP SYN flag is set
+//     //     bpf_printk("TCP SYN flag is set");
+//     // }
 
-    // if (tcp->ack) {
-    //     // TCP ACK flag is set
-    //     bpf_printk("TCP ACK flag is set");
-    // }
-    // Add more checks for other TCP flags as needed
-}
+//     // if (tcp->ack) {
+//     //     // TCP ACK flag is set
+//     //     bpf_printk("TCP ACK flag is set");
+//     // }
+//     // Add more checks for other TCP flags as needed
+// }
 
 static inline __u8 detect_nmap_probes(void* data_end, struct tcphdr* tcp, struct iphdr *ip) {
     u_int32_t options_len = tcp->doff*4 - sizeof(struct tcphdr);
