@@ -132,7 +132,13 @@
 
 #define NMAP_UDP_PROBE_DATA_LEN 300
 
-BPF_ARRAY(ip_identification, u_int32_t, 1);
+struct {
+    __uint(type, BPF_MAP_TYPE_ARRAY);   // Array map type
+    __uint(max_entries, 1);            // Single element in the array
+    __type(key, __u32);                  // Key type
+    __type(value, __u32);                // Value type (u_int32_t)
+} ip_identification SEC(".maps");
+
 
 #define MAX_BUFFER_SIZE 512
 __u8 buffer[MAX_BUFFER_SIZE];                 //!< A temporary buffer where we can store some data when processing.
@@ -443,7 +449,7 @@ int xdp_prog1(struct CTXTYPE *ctx) {
 
     struct ethhdr *eth = data;
 
-    h_proto = bpf_bpf_htons(eth->h_proto);
+    h_proto = bpf_htons(eth->h_proto);
 
 
     // Ignore packet if ethernet protocol is not IP-based
@@ -459,7 +465,7 @@ int xdp_prog1(struct CTXTYPE *ctx) {
 #endif
 
     u_int32_t ip_id_idx = 0;
-    u_int32_t *ip_id = ip_identification.lookup(&ip_id_idx);
+    u_int32_t *ip_id = bpf_map_lookup_elem(&ip_identification, &ip_id_idx);
     // Initialize the identifier with a pseudo-random value
     if (!ip_id)
     {
