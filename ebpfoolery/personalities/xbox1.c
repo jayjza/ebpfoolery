@@ -6,7 +6,7 @@
 #include <linux/ip.h>
 #include <linux/ipv6.h>
 #include <linux/icmp.h>
-
+#include <linux/types.h>
 
 #define DEFAULT_ACTION XDP_PASS
 // #define DEBUG 1
@@ -148,7 +148,7 @@ static inline int parse_ipv6(void *data, u64 nh_off, void *data_end) {
     return ip6h->nexthdr;
 }
 
-static inline void swap_mac(uint8_t *src_mac, uint8_t *dst_mac)
+static inline void swap_mac(__u8 *src_mac, uint8_t *dst_mac)
 {
     int i;
     for (i = 0; i < 6; i++)
