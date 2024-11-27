@@ -267,7 +267,7 @@ static inline __u8 detect_nmap_probes(void* data_end, struct tcphdr* tcp, struct
     u_int16_t flags = bpf_ntohs(tcp_flag_word(tcp)) & 0x00FF;    // We only want a part of the word, and we only want the flag field
             // TODO: We need to check if the ports is open / closed, but we cannot determine that right now from XDP
 
-    if ((flags == TCP_SYN | TCP_CWR | TCP_ECE) && (options_len == 12)) {
+    if ((flags == (TCP_SYN | TCP_CWR | TCP_ECE)) && (options_len == 12)) {
         if (cursor + 12 > data_end)
         {
             bpf_printk("Error: boundary exceeded while parsing TCP Options");
@@ -353,7 +353,7 @@ static inline __u8 detect_nmap_probes(void* data_end, struct tcphdr* tcp, struct
                 bpf_printk("NMap TCP probe T2 packet detected");
                 return TCP_NMAP_T2_P1;
             }
-            if ((flags == TCP_SYN | TCP_FIN | TCP_URG | TCP_PSH) &&
+            if ((flags == (TCP_SYN | TCP_FIN | TCP_URG | TCP_PSH)) &&
                 (bpf_ntohs(tcp->window) == 256) &&
                 (bpf_ntohs(ip->frag_off) & IP_DF) == 0)
             {
@@ -389,7 +389,7 @@ static inline __u8 detect_nmap_probes(void* data_end, struct tcphdr* tcp, struct
                  (*(u_int32_t *)(cursor + 16) == TCP_NMAP_T7_PROBES_5) )
         {
             u_int16_t flags = bpf_ntohs(tcp_flag_word(tcp)) & 0x00FF;    // We only want a part of the word, and we only want the flag field
-            if ((flags == TCP_FIN | TCP_URG | TCP_PSH) &&
+            if ((flags == (TCP_FIN | TCP_URG | TCP_PSH)) &&
                 (bpf_ntohs(tcp->window) == 65535) &&
                 (bpf_ntohs(ip->frag_off) & IP_DF) == 0)
             {
