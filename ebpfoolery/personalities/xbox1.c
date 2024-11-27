@@ -8,6 +8,8 @@
 #include <linux/ipv6.h>
 #include <linux/icmp.h>
 #include <linux/types.h>
+#include <linux/tcp.h>
+#include <linux/udp.h>
 
 #define DEFAULT_ACTION XDP_PASS
 // #define DEBUG 1
