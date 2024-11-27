@@ -219,16 +219,16 @@ static inline void check_flags(struct tcphdr* tcp) {
     // Check TCP flags
     // XMAS: ALL URG,PSH,SYN,FIN
     if (tcp->syn && tcp->urg && tcp->psh && tcp->fin) {
-        bpf_trace_printk("NMAP Xmas scan");
+        bpf_printk("NMAP Xmas scan");
     }
     // if (tcp->syn) {
     //     // TCP SYN flag is set
-    //     bpf_trace_printk("TCP SYN flag is set");
+    //     bpf_printk("TCP SYN flag is set");
     // }
 
     // if (tcp->ack) {
     //     // TCP ACK flag is set
-    //     bpf_trace_printk("TCP ACK flag is set");
+    //     bpf_printk("TCP ACK flag is set");
     // }
     // Add more checks for other TCP flags as needed
 }
@@ -237,17 +237,17 @@ static inline __u8 detect_nmap_probes(void* data_end, struct tcphdr* tcp, struct
     u_int32_t options_len = tcp->doff*4 - sizeof(struct tcphdr);
 
 #ifdef DEBUG
-    bpf_trace_printk("TCP Options length is %d and hdr %d", options_len, sizeof(struct tcphdr));
+    bpf_printk("TCP Options length is %d and hdr %d", options_len, sizeof(struct tcphdr));
 #endif
 
     void *blah = (void *)tcp + sizeof(struct tcphdr) + options_len;
 #ifdef DEBUG
-    bpf_trace_printk("tcp start = %p, data_end = %p (%d))", blah, data_end, data_end - (void *) tcp);
+    bpf_printk("tcp start = %p, data_end = %p (%d))", blah, data_end, data_end - (void *) tcp);
 #endif
 
     if ((void *)tcp + sizeof(struct tcphdr) + options_len > data_end)
     {
-        bpf_trace_printk("TCP Options length is greater than the packet size");
+        bpf_printk("TCP Options length is greater than the packet size");
         return TCP_NMAP_NONE;
     }
 
@@ -261,7 +261,7 @@ static inline __u8 detect_nmap_probes(void* data_end, struct tcphdr* tcp, struct
     if ((flags == TCP_SYN | TCP_CWR | TCP_ECE) && (options_len == 12)) {
         if (cursor + 12 > data_end)
         {
-            bpf_trace_printk("Error: boundary exceeded while parsing TCP Options");
+            bpf_printk("Error: boundary exceeded while parsing TCP Options");
             return TCP_NMAP_NONE;
         }
         if ((*(u_int32_t *)(cursor) == TCP_NMAP_ECN_PROBE_1) &&
@@ -274,20 +274,20 @@ static inline __u8 detect_nmap_probes(void* data_end, struct tcphdr* tcp, struct
     }
     // The nmap probe TCP options is either 16 or 20 bytes
     if (options_len == 20) {
-        // bpf_trace_printk("TCP Options length is %d and hdr %d", options_len, sizeof(struct tcphdr));
+        // bpf_printk("TCP Options length is %d and hdr %d", options_len, sizeof(struct tcphdr));
         if (cursor + 20 > data_end)
         {
-            bpf_trace_printk("Error: boundary exceeded while parsing TCP Options");
+            bpf_printk("Error: boundary exceeded while parsing TCP Options");
             return TCP_NMAP_NONE;
         }
         u_int32_t value = (*(u_int32_t *)(cursor));
 
 #ifdef DEBUG
-        bpf_trace_printk("NMap options part %x, %x, %x", (*(u_int32_t *)(cursor))     , TCP_NMAP_T7_PROBES_1, (*(u_int32_t *)(cursor)) == TCP_NMAP_T7_PROBES_1);
-        bpf_trace_printk("NMap options part %x, %x, %x", (*(u_int32_t *)(cursor + 4)) , TCP_NMAP_T7_PROBES_2, (*(u_int32_t *)(cursor + 4)) == TCP_NMAP_T7_PROBES_2 );
-        bpf_trace_printk("NMap options part %x, %x, %x", (*(u_int32_t *)(cursor + 8)) , TCP_NMAP_T7_PROBES_3, (*(u_int32_t *)(cursor + 8)) == TCP_NMAP_T7_PROBES_3);
-        bpf_trace_printk("NMap options part %x, %x, %x", (*(u_int32_t *)(cursor + 12)), TCP_NMAP_T7_PROBES_4, (*(u_int32_t *)(cursor + 12)) == TCP_NMAP_T7_PROBES_4);
-        bpf_trace_printk("NMap options part %x, %x, %x", (*(u_int32_t *)(cursor + 16)), TCP_NMAP_T7_PROBES_5, (*(u_int32_t *)(cursor + 16)) == TCP_NMAP_T7_PROBES_5);
+        bpf_printk("NMap options part %x, %x, %x", (*(u_int32_t *)(cursor))     , TCP_NMAP_T7_PROBES_1, (*(u_int32_t *)(cursor)) == TCP_NMAP_T7_PROBES_1);
+        bpf_printk("NMap options part %x, %x, %x", (*(u_int32_t *)(cursor + 4)) , TCP_NMAP_T7_PROBES_2, (*(u_int32_t *)(cursor + 4)) == TCP_NMAP_T7_PROBES_2 );
+        bpf_printk("NMap options part %x, %x, %x", (*(u_int32_t *)(cursor + 8)) , TCP_NMAP_T7_PROBES_3, (*(u_int32_t *)(cursor + 8)) == TCP_NMAP_T7_PROBES_3);
+        bpf_printk("NMap options part %x, %x, %x", (*(u_int32_t *)(cursor + 12)), TCP_NMAP_T7_PROBES_4, (*(u_int32_t *)(cursor + 12)) == TCP_NMAP_T7_PROBES_4);
+        bpf_printk("NMap options part %x, %x, %x", (*(u_int32_t *)(cursor + 16)), TCP_NMAP_T7_PROBES_5, (*(u_int32_t *)(cursor + 16)) == TCP_NMAP_T7_PROBES_5);
 #endif
 
         if ((*(u_int32_t *)(cursor) == TCP_NMAP_SEQ_PROBE_P1_1) &&
@@ -297,7 +297,7 @@ static inline __u8 detect_nmap_probes(void* data_end, struct tcphdr* tcp, struct
              (*(u_int32_t *)(cursor + 16) == TCP_NMAP_SEQ_PROBE_P1_5) &&
              (ntohs(tcp->window) == 1))
             {
-                // bpf_trace_printk("NMap TCP probe packet 1 detected");
+                // bpf_printk("NMap TCP probe packet 1 detected");
                 return TCP_NMAP_T1_P1;
             }
         else if ((*(u_int32_t *)(cursor)      == TCP_NMAP_SEQ_PROBE_P2_1) &&
@@ -307,7 +307,7 @@ static inline __u8 detect_nmap_probes(void* data_end, struct tcphdr* tcp, struct
                  (*(u_int32_t *)(cursor + 16) == TCP_NMAP_SEQ_PROBE_P2_5) &&
                  (ntohs(tcp->window) == 63))
         {
-                // bpf_trace_printk("NMap TCP probe packet 2 detected");
+                // bpf_printk("NMap TCP probe packet 2 detected");
                 return TCP_NMAP_T1_P2;
         }
         else if ((*(u_int32_t *)(cursor)      == TCP_NMAP_SEQ_PROBE_P3_1) &&
@@ -317,7 +317,7 @@ static inline __u8 detect_nmap_probes(void* data_end, struct tcphdr* tcp, struct
                  (*(u_int32_t *)(cursor + 16) == TCP_NMAP_SEQ_PROBE_P3_5) &&
                  (ntohs(tcp->window) == 4))
         {
-                // bpf_trace_printk("NMap TCP probe packet 3 detected");
+                // bpf_printk("NMap TCP probe packet 3 detected");
                 return TCP_NMAP_T1_P3;
         }
         else if ((*(u_int32_t *)(cursor)      == TCP_NMAP_SEQ_PROBE_P5_1) &&
@@ -327,7 +327,7 @@ static inline __u8 detect_nmap_probes(void* data_end, struct tcphdr* tcp, struct
                  (*(u_int32_t *)(cursor + 16) == TCP_NMAP_SEQ_PROBE_P5_5) &&
                  (ntohs(tcp->window) == 16))
         {
-                // bpf_trace_printk("NMap TCP probe packet 5 detected");
+                // bpf_printk("NMap TCP probe packet 5 detected");
                 return TCP_NMAP_T1_P5;
         }
         else if ((*(u_int32_t *)(cursor)      == TCP_NMAP_T2_T6_PROBES_1) &&
@@ -341,35 +341,35 @@ static inline __u8 detect_nmap_probes(void* data_end, struct tcphdr* tcp, struct
                 (ntohs(tcp->window) == 128) &&
                 (ntohs(ip->frag_off) & IP_DF))
             {
-                bpf_trace_printk("NMap TCP probe T2 packet detected");
+                bpf_printk("NMap TCP probe T2 packet detected");
                 return TCP_NMAP_T2_P1;
             }
             if ((flags == TCP_SYN | TCP_FIN | TCP_URG | TCP_PSH) &&
                 (ntohs(tcp->window) == 256) &&
                 (ntohs(ip->frag_off) & IP_DF) == 0)
             {
-                bpf_trace_printk("NMap TCP probe T3 packet detected");
+                bpf_printk("NMap TCP probe T3 packet detected");
                 return TCP_NMAP_T3_P1;
             }
             if ((flags = TCP_ACK) &&
                 (ntohs(tcp->window) == 1024) &&
                 (ntohs(ip->frag_off) & IP_DF))
             {
-                bpf_trace_printk("NMap TCP probe T4 packet detected");
+                bpf_printk("NMap TCP probe T4 packet detected");
                 return TCP_NMAP_T4_P1;
             }
             if ((flags = TCP_SYN) &&
                 (ntohs(tcp->window) == 31337) &&
                 (ntohs(ip->frag_off) & IP_DF) == 0)
             {
-                bpf_trace_printk("NMap TCP probe T5 packet detected");
+                bpf_printk("NMap TCP probe T5 packet detected");
                 return TCP_NMAP_T5_P1;
             }
             if ((flags = TCP_ACK) &&
                 (ntohs(tcp->window) == 32768) &&
                 (ntohs(ip->frag_off) & IP_DF))
             {
-                bpf_trace_printk("NMap TCP probe T6 packet detected");
+                bpf_printk("NMap TCP probe T6 packet detected");
                 return TCP_NMAP_T6_P1;
             }
         }
@@ -384,16 +384,16 @@ static inline __u8 detect_nmap_probes(void* data_end, struct tcphdr* tcp, struct
                 (ntohs(tcp->window) == 65535) &&
                 (ntohs(ip->frag_off) & IP_DF) == 0)
             {
-                bpf_trace_printk("NMap TCP probe T7 packet detected");
+                bpf_printk("NMap TCP probe T7 packet detected");
                 return TCP_NMAP_T7_P1;
             }
         }
     }
     else if (options_len == 16) {
-        // bpf_trace_printk("TCP Options length is %d and hdr %d", options_len, sizeof(struct tcphdr));
+        // bpf_printk("TCP Options length is %d and hdr %d", options_len, sizeof(struct tcphdr));
         if (cursor + 16 > data_end)
         {
-            bpf_trace_printk("Error: boundary exceeded while parsing TCP Options");
+            bpf_printk("Error: boundary exceeded while parsing TCP Options");
             return TCP_NMAP_NONE;
         }
         if ((*(u_int32_t *)(cursor)      == TCP_NMAP_SEQ_PROBE_P4_1) &&
@@ -402,7 +402,7 @@ static inline __u8 detect_nmap_probes(void* data_end, struct tcphdr* tcp, struct
             (*(u_int32_t *)(cursor + 12) == TCP_NMAP_SEQ_PROBE_P4_4) &&
             (ntohs(tcp->window) == 4))
             {
-                // bpf_trace_printk("NMap TCP probe packet 4 detected");
+                // bpf_printk("NMap TCP probe packet 4 detected");
                 return TCP_NMAP_T1_P4;
             }
         else if ((*(u_int32_t *)(cursor)      == TCP_NMAP_SEQ_PROBE_P6_1) &&
@@ -411,7 +411,7 @@ static inline __u8 detect_nmap_probes(void* data_end, struct tcphdr* tcp, struct
                  (*(u_int32_t *)(cursor + 12) == TCP_NMAP_SEQ_PROBE_P6_4) &&
                  (ntohs(tcp->window) == 512))
         {
-                // bpf_trace_printk("NMap TCP probe packet 6 detected");
+                // bpf_printk("NMap TCP probe packet 6 detected");
                 return TCP_NMAP_T1_P6;
         }
     }
@@ -428,13 +428,13 @@ int xdp_prog1(struct CTXTYPE *ctx) {
     __u16 h_proto;           //! Protocol value inside the ethernet header
 
 #ifdef DEBUG
-    bpf_trace_printk("Running XDP program");
+    bpf_printk("Running XDP program");
 #endif
 
     // Boundary check: check if packet is larger than a full ethernet + ip header
     if (data + sizeof(struct ethhdr) + sizeof(struct iphdr) > data_end)
     {
-        bpf_trace_printk("Invalid size for an IP packet");
+        bpf_printk("Invalid size for an IP packet");
         return DEFAULT_ACTION;
     }
 
@@ -447,12 +447,12 @@ int xdp_prog1(struct CTXTYPE *ctx) {
     if (h_proto != ETH_P_IP) // || h_proto != ETH_P_IPV6)  // Not handling IPv6 right now
     {
 #ifdef DEBUG
-        bpf_trace_printk("Not a IPv4 Packet");
+        bpf_printk("Not a IPv4 Packet");
 #endif
         return XDP_PASS;
     }
 #ifdef DEBUG
-    bpf_trace_printk("Ether Proto: 0x%x", h_proto);
+    bpf_printk("Ether Proto: 0x%x", h_proto);
 #endif
 
     u_int32_t ip_id_idx = 0;
@@ -469,16 +469,16 @@ int xdp_prog1(struct CTXTYPE *ctx) {
     // (*ip_id)++;
     lock_xadd(ip_id, 1);
 #ifdef DEBUG
-    bpf_trace_printk("IP ID = %d", (*ip_id));
+    bpf_printk("IP ID = %d", (*ip_id));
 #endif
     struct iphdr *ip = data + sizeof(*eth);
 
 #ifdef DEBUG
-    bpf_trace_printk("IP Proto: %d", ip->protocol);
+    bpf_printk("IP Proto: %d", ip->protocol);
 #endif
     if (ip->protocol == IPPROTO_TCP)
     {
-        // bpf_trace_printk("Processing TCP packet");
+        // bpf_printk("Processing TCP packet");
 
         struct tcphdr *tcp = (void *)ip + (ip->ihl << 2);
         if ((void *)(tcp + 1) > data_end) {
@@ -486,7 +486,7 @@ int xdp_prog1(struct CTXTYPE *ctx) {
         }
 
 #ifdef DEBUG
-        bpf_trace_printk("TCP connection from %d to %d", ntohs(tcp->source), ntohs(tcp->dest));
+        bpf_printk("TCP connection from %d to %d", ntohs(tcp->source), ntohs(tcp->dest));
 #endif
 
 // struct iphdr {
@@ -545,8 +545,8 @@ int xdp_prog1(struct CTXTYPE *ctx) {
         u64 current_time = bpf_ktime_get_ns();
         u_int32_t timestampValue = (__u32)(current_time/10000000);
 #ifdef DEBUG
-        bpf_trace_printk("Timestamp: %d", timestampValue);
-        bpf_trace_printk("detect_nmap_probes %d", nmap_result);
+        bpf_printk("Timestamp: %d", timestampValue);
+        bpf_printk("detect_nmap_probes %d", nmap_result);
 #endif
         switch(nmap_result) {
             case TCP_NMAP_ECN: {
@@ -572,7 +572,7 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 void * cursor = options_start;
                 if (cursor + 12 > data_end)
                 {
-                    bpf_trace_printk("Error: boundary exceeded while trying to set TCP Options");
+                    bpf_printk("Error: boundary exceeded while trying to set TCP Options");
                     return DEFAULT_ACTION;
                 }
                 else
@@ -598,7 +598,7 @@ int xdp_prog1(struct CTXTYPE *ctx) {
 
                 // Update the ethernet packet
                 swap_mac((__u8 *)eth->h_source, (__u8 *)eth->h_dest);
-                bpf_trace_printk("NMAP detection found ECN test");
+                bpf_printk("NMAP detection found ECN test");
                 return XDP_TX;
             }
             case TCP_NMAP_T1_P1: {
@@ -609,7 +609,7 @@ int xdp_prog1(struct CTXTYPE *ctx) {
 
                 tcp->ack_seq = htonl(ntohl(tcp->seq) + 1);
                 tcp->seq = htonl(bpf_get_prandom_u32());       // Generate a random sequence number for TCP
-                bpf_trace_printk("TCP Sequence NR %d", tcp->seq);
+                bpf_printk("TCP Sequence NR %d", tcp->seq);
                 tcp->window = htons(8192);
 
                 // Swap src/dst TCP
@@ -623,7 +623,7 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 void * cursor = options_start;
                 if (cursor + 20 > data_end)
                 {
-                    bpf_trace_printk("Error: boundary exceeded while trying to set TCP Options");
+                    bpf_printk("Error: boundary exceeded while trying to set TCP Options");
                     return DEFAULT_ACTION;
                 }
                 else
@@ -654,7 +654,7 @@ int xdp_prog1(struct CTXTYPE *ctx) {
 
                 // Update the ethernet packet
                 swap_mac((__u8 *)eth->h_source, (__u8 *)eth->h_dest);
-                bpf_trace_printk("NMAP detection found probe 1 of test 1");
+                bpf_printk("NMAP detection found probe 1 of test 1");
                 return XDP_TX;
             }
             case TCP_NMAP_T1_P2: {
@@ -664,7 +664,7 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 tcp->ack = 1;
 
                 tcp->seq = htonl(bpf_get_prandom_u32());       // Generate a random sequence number for TCP
-                bpf_trace_printk("TCP Sequence NR %d", tcp->seq);
+                bpf_printk("TCP Sequence NR %d", tcp->seq);
                 tcp->window = htons(8192);
 
                 // Swap src/dst TCP
@@ -678,7 +678,7 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 void * cursor = options_start;
                 if (cursor + 20 > data_end)
                 {
-                    bpf_trace_printk("Error: boundary exceeded while trying to set TCP Options");
+                    bpf_printk("Error: boundary exceeded while trying to set TCP Options");
                     return DEFAULT_ACTION;
                 }
                 else
@@ -706,7 +706,7 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 // Update the ethernet packet
                 swap_mac((__u8 *)eth->h_source, (__u8 *)eth->h_dest);
 
-                bpf_trace_printk("NMAP detection found probe 2 of test 1");
+                bpf_printk("NMAP detection found probe 2 of test 1");
                 return XDP_TX;
             }
             case TCP_NMAP_T1_P3: {
@@ -716,7 +716,7 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 tcp->ack = 1;
 
                 tcp->seq = htonl(bpf_get_prandom_u32());       // Generate a random sequence number for TCP
-                bpf_trace_printk("TCP Sequence NR %d", tcp->seq);
+                bpf_printk("TCP Sequence NR %d", tcp->seq);
                 tcp->window = htons(8192);
 
                 // Swap src/dst TCP
@@ -730,7 +730,7 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 void * cursor = options_start;
                 if (cursor + 20 > data_end)
                 {
-                    bpf_trace_printk("Error: boundary exceeded while trying to set TCP Options");
+                    bpf_printk("Error: boundary exceeded while trying to set TCP Options");
                     return DEFAULT_ACTION;
                 }
                 else
@@ -758,14 +758,14 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 // Update the ethernet packet
                 swap_mac((__u8 *)eth->h_source, (__u8 *)eth->h_dest);
 
-                bpf_trace_printk("NMAP detection found probe 3 of test 1");
+                bpf_printk("NMAP detection found probe 3 of test 1");
                 return XDP_TX;
             }
             case TCP_NMAP_T1_P4: {
                 // For probe4 we need to make the buffer slightly bigger
                 if (bpf_xdp_adjust_tail(ctx, 4))
                 {
-                    bpf_trace_printk("Error: Failed to increase packet size");
+                    bpf_printk("Error: Failed to increase packet size");
                     return DEFAULT_ACTION;
                 }
                 data_end = (void*)(long)ctx->data_end;
@@ -773,7 +773,7 @@ int xdp_prog1(struct CTXTYPE *ctx) {
 
                 if (data + sizeof(struct ethhdr) + sizeof(struct iphdr) + sizeof(struct tcphdr) > data_end)
                 {
-                    bpf_trace_printk("Invalid size for an IP packet");
+                    bpf_printk("Invalid size for an IP packet");
                     return DEFAULT_ACTION;
                 }
                 struct ethhdr *eth = data;
@@ -789,7 +789,7 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 tcp->ack = 1;
 
                 tcp->seq = htonl(bpf_get_prandom_u32());       // Generate a random sequence number for TCP
-                bpf_trace_printk("TCP Sequence NR %d", tcp->seq);
+                bpf_printk("TCP Sequence NR %d", tcp->seq);
                 tcp->window = htons(8192);
 
                 // Swap src/dst TCP
@@ -804,7 +804,7 @@ int xdp_prog1(struct CTXTYPE *ctx) {
 
                 if (cursor + 20 > data_end)
                 {
-                    bpf_trace_printk("Error: boundary exceeded while trying to set TCP Options");
+                    bpf_printk("Error: boundary exceeded while trying to set TCP Options");
                     return DEFAULT_ACTION;
                 }
                 else
@@ -832,7 +832,7 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 // Update the ethernet packet
                 swap_mac((__u8 *)eth->h_source, (__u8 *)eth->h_dest);
 
-                bpf_trace_printk("NMAP detection found probe 4 of test 1");
+                bpf_printk("NMAP detection found probe 4 of test 1");
                 return XDP_TX;
             }
             case TCP_NMAP_T1_P5: {
@@ -844,7 +844,7 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 tcp->ack = 1;
 
                 tcp->seq = htonl(bpf_get_prandom_u32());       // Generate a random sequence number for TCP
-                bpf_trace_printk("TCP Sequence NR %d", tcp->seq);
+                bpf_printk("TCP Sequence NR %d", tcp->seq);
                 tcp->window = htons(8192);
 
                 // Swap src/dst TCP
@@ -858,7 +858,7 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 void * cursor = options_start;
                 if (cursor + 20 > data_end)
                 {
-                    bpf_trace_printk("Error: boundary exceeded while trying to set TCP Options");
+                    bpf_printk("Error: boundary exceeded while trying to set TCP Options");
                     return DEFAULT_ACTION;
                 }
                 else
@@ -885,7 +885,7 @@ int xdp_prog1(struct CTXTYPE *ctx) {
 
                 // Update the ethernet packet
                 swap_mac((__u8 *)eth->h_source, (__u8 *)eth->h_dest);
-                bpf_trace_printk("NMAP detection found probe 5 of test 1");
+                bpf_printk("NMAP detection found probe 5 of test 1");
                 return XDP_TX;
             }
             case TCP_NMAP_T1_P6: {
@@ -907,7 +907,7 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 tcp->ack = 1;
 
                 tcp->seq = htonl(bpf_get_prandom_u32());       // Generate a random sequence number for TCP
-                bpf_trace_printk("TCP Sequence NR %d", tcp->seq);
+                bpf_printk("TCP Sequence NR %d", tcp->seq);
                 tcp->window = htons(8192);
 
                 // Swap src/dst TCP
@@ -921,7 +921,7 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 void * cursor = options_start;
                 if (cursor + 16 > data_end)
                 {
-                    bpf_trace_printk("Error: boundary exceeded while trying to set TCP Options");
+                    bpf_printk("Error: boundary exceeded while trying to set TCP Options");
                     return DEFAULT_ACTION;
                 }
                 else
@@ -948,7 +948,7 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 // Update the ethernet packet
                 swap_mac((__u8 *)eth->h_source, (__u8 *)eth->h_dest);
 
-                bpf_trace_printk("NMAP detection found probe 6 of test 1");
+                bpf_printk("NMAP detection found probe 6 of test 1");
                 return XDP_TX;
             }
             case TCP_NMAP_T3_P1:
@@ -1000,11 +1000,11 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 // Since we don't have options in the packet anymore we need to chop it off.
                 if (bpf_xdp_adjust_tail(ctx, 0 - 20))
                 {
-                    bpf_trace_printk("Error: Failed to remote options from packet.");
+                    bpf_printk("Error: Failed to remote options from packet.");
                     return DEFAULT_ACTION;
                 }
 
-                bpf_trace_printk("Sending TCP_NMAP_T5_P1");
+                bpf_printk("Sending TCP_NMAP_T5_P1");
                 return XDP_TX;
             }
             case TCP_NMAP_T4_P1:
@@ -1048,11 +1048,11 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 // Since we don't have options in the packet anymore we need to chop it off.
                 if (bpf_xdp_adjust_tail(ctx, 0 - 20))
                 {
-                    bpf_trace_printk("Error: Failed to remote options from packet.");
+                    bpf_printk("Error: Failed to remote options from packet.");
                     return DEFAULT_ACTION;
                 }
 
-                bpf_trace_printk("Sending TCP_NMAP_T5_P1");
+                bpf_printk("Sending TCP_NMAP_T5_P1");
                 return XDP_TX;
             }
             case TCP_NMAP_T2_P1:
@@ -1095,11 +1095,11 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 // Since we don't have options in the packet anymore we need to chop it off.
                 if (bpf_xdp_adjust_tail(ctx, 0 - 20))
                 {
-                    bpf_trace_printk("Error: Failed to remote options from packet.");
+                    bpf_printk("Error: Failed to remote options from packet.");
                     return DEFAULT_ACTION;
                 }
 
-                bpf_trace_printk("Sending TCP_NMAP_T5_P1");
+                bpf_printk("Sending TCP_NMAP_T5_P1");
                 return XDP_TX;
             }
             // {
@@ -1108,7 +1108,7 @@ int xdp_prog1(struct CTXTYPE *ctx) {
 
             case TCP_NMAP_NONE: {
 #ifdef DEBUG
-                bpf_trace_printk("NMAP detection found nothing.");
+                bpf_printk("NMAP detection found nothing.");
 #endif
                 return XDP_PASS;
             }
@@ -1144,7 +1144,7 @@ int xdp_prog1(struct CTXTYPE *ctx) {
         */
         if (data + sizeof(struct ethhdr) + sizeof(struct iphdr) + sizeof(struct udphdr) > data_end)
         {
-            bpf_trace_printk("ICMP packet exceeding size of buffer");
+            bpf_printk("ICMP packet exceeding size of buffer");
             return DEFAULT_ACTION;
         }
         struct udphdr *udp = data + sizeof(*eth) + sizeof(*ip);
@@ -1154,37 +1154,37 @@ int xdp_prog1(struct CTXTYPE *ctx) {
             return DEFAULT_ACTION;
         }
 
-        bpf_trace_printk("UPD Data Length = %d", udp_data_len);
+        bpf_printk("UPD Data Length = %d", udp_data_len);
 
         // TODO check if this port is open before doing this.
         // We probably need to use a BPF map to do this
 
 #ifdef DEBUG
-        bpf_trace_printk("Traffic for port %d", ntohs(udp->dest));
-        bpf_trace_printk("ip length was %d", ntohs(ip->tot_len));
-        bpf_trace_printk("Start = %p, end = %p (%d)", ctx->data, ctx->data_end, ctx->data_end - ctx->data);
+        bpf_printk("Traffic for port %d", ntohs(udp->dest));
+        bpf_printk("ip length was %d", ntohs(ip->tot_len));
+        bpf_printk("Start = %p, end = %p (%d)", ctx->data, ctx->data_end, ctx->data_end - ctx->data);
 #endif
 
         size_t new_header_size = sizeof(struct iphdr) +  sizeof(struct icmphdr);
 
         if (bpf_xdp_adjust_head(ctx, 0 - new_header_size))
         {
-            bpf_trace_printk("Unable to allocate space for ICMP response");
+            bpf_printk("Unable to allocate space for ICMP response");
             return DEFAULT_ACTION;
         }
 #ifdef DEBUG
-        bpf_trace_printk("Packet is now bigger %d", new_header_size);
+        bpf_printk("Packet is now bigger %d", new_header_size);
 #endif
         data = (void*)(long)ctx->data;
         data_end = (void*)(long)ctx->data_end;
 
 #ifdef DEBUG
-        bpf_trace_printk("Start = %p, end = %p, (%d)", ctx->data, ctx->data_end, ctx->data_end - ctx->data);
+        bpf_printk("Start = %p, end = %p, (%d)", ctx->data, ctx->data_end, ctx->data_end - ctx->data);
 #endif
 
         if (data + sizeof(struct ethhdr) + sizeof(struct iphdr) + sizeof(struct icmphdr) > data_end)
         {
-            bpf_trace_printk("Resized packet is too small1");
+            bpf_printk("Resized packet is too small1");
             return DEFAULT_ACTION;
         }
 
@@ -1193,7 +1193,7 @@ int xdp_prog1(struct CTXTYPE *ctx) {
         void *old_eth_location = data + new_header_size;
 
 #ifdef DEBUG
-        bpf_trace_printk("Copying ethernet from old = %p, new = %p, (%d)", old_eth_location, eth, 0);
+        bpf_printk("Copying ethernet from old = %p, new = %p, (%d)", old_eth_location, eth, 0);
 #endif
 
         // Copy the existing Ethernet Header
@@ -1205,7 +1205,7 @@ int xdp_prog1(struct CTXTYPE *ctx) {
         // Copy the IP header
         if (data + sizeof(struct ethhdr) + sizeof(struct iphdr) + new_header_size > data_end)
         {
-            bpf_trace_printk("Resized packet is too small2");
+            bpf_printk("Resized packet is too small2");
             return DEFAULT_ACTION;
         }
         void *old_ip_header =  data + new_header_size + sizeof(struct ethhdr);
@@ -1217,7 +1217,7 @@ int xdp_prog1(struct CTXTYPE *ctx) {
         }
 
 #ifdef DEBUG
-        bpf_trace_printk("ethernet header is %d", sizeof(struct ethhdr));
+        bpf_printk("ethernet header is %d", sizeof(struct ethhdr));
 #endif
 
         // Insert ICMP header
@@ -1231,20 +1231,20 @@ int xdp_prog1(struct CTXTYPE *ctx) {
         // u_int32_t pkt_len = ((struct iphdr *)old_ip_header)->tot_len + sizeof(struct icmphdr);
         if ( ((void*)icmp) + pkt_len > data_end)
         {
-             bpf_trace_printk("packet length exceeds data_end");
+             bpf_printk("packet length exceeds data_end");
              return DEFAULT_ACTION;
         }
         // update_ip_checksum(icmp, pkt_len, &icmp->checksum);
         update_ip_checksum(icmp, pkt_len, &icmp->checksum);
 
-        bpf_trace_printk("ICMP checksum is %x", icmp->checksum);
+        bpf_printk("ICMP checksum is %x", icmp->checksum);
 
         // Update the existing IP header
         ip->protocol = IPPROTO_ICMP;
         ip->tot_len = htons(ntohs(ip->tot_len) + new_header_size);
 
 #ifdef DEBUG
-        bpf_trace_printk("ip length is %d", ntohs(ip->tot_len));
+        bpf_printk("ip length is %d", ntohs(ip->tot_len));
 #endif
 
         // Clear don't fragement
@@ -1282,12 +1282,12 @@ int xdp_prog1(struct CTXTYPE *ctx) {
         */
         if (data + sizeof(struct ethhdr) + sizeof(struct iphdr) + sizeof(struct icmphdr) > data_end)
         {
-            bpf_trace_printk("ICMP packet exceeding size of buffer");
+            bpf_printk("ICMP packet exceeding size of buffer");
             return DEFAULT_ACTION;
         }
 
         // If ICMP echo request
-        bpf_trace_printk("Processing ICMP packet");
+        bpf_printk("Processing ICMP packet");
         struct icmphdr *icmp = data + sizeof(*eth) + sizeof(*ip);
 
         // Build ICMP echo reply
@@ -1320,7 +1320,7 @@ int xdp_prog1(struct CTXTYPE *ctx) {
         return XDP_TX;
     }
 #ifdef DEBUG
-    bpf_trace_printk("Not a ICMP Packet");
+    bpf_printk("Not a ICMP Packet");
 #endif
     return rc;
 }
