@@ -1,5 +1,6 @@
 #include <linux/bpf.h>
 #include <bpf/bpf_helpers.h>
+#include <bpf/bpf_endian.h>
 #include <linux/in.h>
 #include <linux/if_ether.h>
 #include <linux/if_packet.h>
@@ -213,10 +214,10 @@ static inline void update_ip_checksum(void *data, int len, __u16 *checksum_locat
 // Packet #6: MSS (265), SACK permitted, Timestamp (TSval: 0xFFFFFFFF; TSecr: 0). The window field is 512.
 
 
-// The htonl() function converts the unsigned integer hostlong from host byte order to network byte order.
-// The htons() function converts the unsigned short integer hostshort from host byte order to network byte order.
-// The ntohl() function converts the unsigned integer netlong from network byte order to host byte order.
-// The ntohs() function converts the unsigned short integer netshort from network byte order to host byte order.
+// The bpf_htonl() function converts the unsigned integer hostlong from host byte order to network byte order.
+// The bpf_htons() function converts the unsigned short integer hostshort from host byte order to network byte order.
+// The bpf_ntohl() function converts the unsigned integer netlong from network byte order to host byte order.
+// The bpf_ntohs() function converts the unsigned short integer netshort from network byte order to host byte order.
 
 static inline void check_flags(struct tcphdr* tcp) {
     // Check TCP flags
@@ -258,7 +259,7 @@ static inline __u8 detect_nmap_probes(void* data_end, struct tcphdr* tcp, struct
 
     void * cursor = options_start;
     __u16 i;
-    u_int16_t flags = ntohs(tcp_flag_word(tcp)) & 0x00FF;    // We only want a part of the word, and we only want the flag field
+    u_int16_t flags = bpf_ntohs(tcp_flag_word(tcp)) & 0x00FF;    // We only want a part of the word, and we only want the flag field
             // TODO: We need to check if the ports is open / closed, but we cannot determine that right now from XDP
 
     if ((flags == TCP_SYN | TCP_CWR | TCP_ECE) && (options_len == 12)) {
@@ -298,7 +299,7 @@ static inline __u8 detect_nmap_probes(void* data_end, struct tcphdr* tcp, struct
              (*(u_int32_t *)(cursor + 8) == TCP_NMAP_SEQ_PROBE_P1_3) &&
              (*(u_int32_t *)(cursor + 12) == TCP_NMAP_SEQ_PROBE_P1_4) &&
              (*(u_int32_t *)(cursor + 16) == TCP_NMAP_SEQ_PROBE_P1_5) &&
-             (ntohs(tcp->window) == 1))
+             (bpf_ntohs(tcp->window) == 1))
             {
                 // bpf_printk("NMap TCP probe packet 1 detected");
                 return TCP_NMAP_T1_P1;
@@ -308,7 +309,7 @@ static inline __u8 detect_nmap_probes(void* data_end, struct tcphdr* tcp, struct
                  (*(u_int32_t *)(cursor + 8)  == TCP_NMAP_SEQ_PROBE_P2_3) &&
                  (*(u_int32_t *)(cursor + 12) == TCP_NMAP_SEQ_PROBE_P2_4) &&
                  (*(u_int32_t *)(cursor + 16) == TCP_NMAP_SEQ_PROBE_P2_5) &&
-                 (ntohs(tcp->window) == 63))
+                 (bpf_ntohs(tcp->window) == 63))
         {
                 // bpf_printk("NMap TCP probe packet 2 detected");
                 return TCP_NMAP_T1_P2;
@@ -318,7 +319,7 @@ static inline __u8 detect_nmap_probes(void* data_end, struct tcphdr* tcp, struct
                  (*(u_int32_t *)(cursor + 8)  == TCP_NMAP_SEQ_PROBE_P3_3) &&
                  (*(u_int32_t *)(cursor + 12) == TCP_NMAP_SEQ_PROBE_P3_4) &&
                  (*(u_int32_t *)(cursor + 16) == TCP_NMAP_SEQ_PROBE_P3_5) &&
-                 (ntohs(tcp->window) == 4))
+                 (bpf_ntohs(tcp->window) == 4))
         {
                 // bpf_printk("NMap TCP probe packet 3 detected");
                 return TCP_NMAP_T1_P3;
@@ -328,7 +329,7 @@ static inline __u8 detect_nmap_probes(void* data_end, struct tcphdr* tcp, struct
                  (*(u_int32_t *)(cursor + 8)  == TCP_NMAP_SEQ_PROBE_P5_3) &&
                  (*(u_int32_t *)(cursor + 12) == TCP_NMAP_SEQ_PROBE_P5_4) &&
                  (*(u_int32_t *)(cursor + 16) == TCP_NMAP_SEQ_PROBE_P5_5) &&
-                 (ntohs(tcp->window) == 16))
+                 (bpf_ntohs(tcp->window) == 16))
         {
                 // bpf_printk("NMap TCP probe packet 5 detected");
                 return TCP_NMAP_T1_P5;
@@ -341,36 +342,36 @@ static inline __u8 detect_nmap_probes(void* data_end, struct tcphdr* tcp, struct
         {
 
             if ((flags == 0) &&
-                (ntohs(tcp->window) == 128) &&
-                (ntohs(ip->frag_off) & IP_DF))
+                (bpf_ntohs(tcp->window) == 128) &&
+                (bpf_ntohs(ip->frag_off) & IP_DF))
             {
                 bpf_printk("NMap TCP probe T2 packet detected");
                 return TCP_NMAP_T2_P1;
             }
             if ((flags == TCP_SYN | TCP_FIN | TCP_URG | TCP_PSH) &&
-                (ntohs(tcp->window) == 256) &&
-                (ntohs(ip->frag_off) & IP_DF) == 0)
+                (bpf_ntohs(tcp->window) == 256) &&
+                (bpf_ntohs(ip->frag_off) & IP_DF) == 0)
             {
                 bpf_printk("NMap TCP probe T3 packet detected");
                 return TCP_NMAP_T3_P1;
             }
             if ((flags = TCP_ACK) &&
-                (ntohs(tcp->window) == 1024) &&
-                (ntohs(ip->frag_off) & IP_DF))
+                (bpf_ntohs(tcp->window) == 1024) &&
+                (bpf_ntohs(ip->frag_off) & IP_DF))
             {
                 bpf_printk("NMap TCP probe T4 packet detected");
                 return TCP_NMAP_T4_P1;
             }
             if ((flags = TCP_SYN) &&
-                (ntohs(tcp->window) == 31337) &&
-                (ntohs(ip->frag_off) & IP_DF) == 0)
+                (bpf_ntohs(tcp->window) == 31337) &&
+                (bpf_ntohs(ip->frag_off) & IP_DF) == 0)
             {
                 bpf_printk("NMap TCP probe T5 packet detected");
                 return TCP_NMAP_T5_P1;
             }
             if ((flags = TCP_ACK) &&
-                (ntohs(tcp->window) == 32768) &&
-                (ntohs(ip->frag_off) & IP_DF))
+                (bpf_ntohs(tcp->window) == 32768) &&
+                (bpf_ntohs(ip->frag_off) & IP_DF))
             {
                 bpf_printk("NMap TCP probe T6 packet detected");
                 return TCP_NMAP_T6_P1;
@@ -382,10 +383,10 @@ static inline __u8 detect_nmap_probes(void* data_end, struct tcphdr* tcp, struct
                  (*(u_int32_t *)(cursor + 12) == TCP_NMAP_T7_PROBES_4) &&
                  (*(u_int32_t *)(cursor + 16) == TCP_NMAP_T7_PROBES_5) )
         {
-            u_int16_t flags = ntohs(tcp_flag_word(tcp)) & 0x00FF;    // We only want a part of the word, and we only want the flag field
+            u_int16_t flags = bpf_ntohs(tcp_flag_word(tcp)) & 0x00FF;    // We only want a part of the word, and we only want the flag field
             if ((flags == TCP_FIN | TCP_URG | TCP_PSH) &&
-                (ntohs(tcp->window) == 65535) &&
-                (ntohs(ip->frag_off) & IP_DF) == 0)
+                (bpf_ntohs(tcp->window) == 65535) &&
+                (bpf_ntohs(ip->frag_off) & IP_DF) == 0)
             {
                 bpf_printk("NMap TCP probe T7 packet detected");
                 return TCP_NMAP_T7_P1;
@@ -403,7 +404,7 @@ static inline __u8 detect_nmap_probes(void* data_end, struct tcphdr* tcp, struct
             (*(u_int32_t *)(cursor + 4)  == TCP_NMAP_SEQ_PROBE_P4_2) &&
             (*(u_int32_t *)(cursor + 8)  == TCP_NMAP_SEQ_PROBE_P4_3) &&
             (*(u_int32_t *)(cursor + 12) == TCP_NMAP_SEQ_PROBE_P4_4) &&
-            (ntohs(tcp->window) == 4))
+            (bpf_ntohs(tcp->window) == 4))
             {
                 // bpf_printk("NMap TCP probe packet 4 detected");
                 return TCP_NMAP_T1_P4;
@@ -412,7 +413,7 @@ static inline __u8 detect_nmap_probes(void* data_end, struct tcphdr* tcp, struct
                  (*(u_int32_t *)(cursor + 4)  == TCP_NMAP_SEQ_PROBE_P6_2) &&
                  (*(u_int32_t *)(cursor + 8)  == TCP_NMAP_SEQ_PROBE_P6_3) &&
                  (*(u_int32_t *)(cursor + 12) == TCP_NMAP_SEQ_PROBE_P6_4) &&
-                 (ntohs(tcp->window) == 512))
+                 (bpf_ntohs(tcp->window) == 512))
         {
                 // bpf_printk("NMap TCP probe packet 6 detected");
                 return TCP_NMAP_T1_P6;
@@ -443,7 +444,7 @@ int xdp_prog1(struct CTXTYPE *ctx) {
 
     struct ethhdr *eth = data;
 
-    h_proto = bpf_htons(eth->h_proto);
+    h_proto = bpf_bpf_htons(eth->h_proto);
 
 
     // Ignore packet if ethernet protocol is not IP-based
@@ -489,7 +490,7 @@ int xdp_prog1(struct CTXTYPE *ctx) {
         }
 
 #ifdef DEBUG
-        bpf_printk("TCP connection from %d to %d", ntohs(tcp->source), ntohs(tcp->dest));
+        bpf_printk("TCP connection from %d to %d", bpf_ntohs(tcp->source), bpf_ntohs(tcp->dest));
 #endif
 
 // struct iphdr {
@@ -562,7 +563,7 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 tcp->urg_ptr = 0;
                 tcp->res1 = 0;
 
-                tcp->window = htons(8192);
+                tcp->window = bpf_htons(8192);
 
                 // Swap src/dst TCP
                 __u16 src_tcp_port = tcp->source;
@@ -580,17 +581,17 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 }
                 else
                 {
-                    (*(u_int32_t *)(cursor +  0)) = htonl(0x020405b4);
-                    (*(u_int32_t *)(cursor +  4)) = htonl(0x01030308);
-                    (*(u_int32_t *)(cursor +  8)) = htonl(0x01010402);
+                    (*(u_int32_t *)(cursor +  0)) = bpf_htonl(0x020405b4);
+                    (*(u_int32_t *)(cursor +  4)) = bpf_htonl(0x01030308);
+                    (*(u_int32_t *)(cursor +  8)) = bpf_htonl(0x01010402);
                 }
                 update_ip_checksum(tcp, sizeof(struct tcphdr) + options_len, &tcp->check);
 
-                ip->frag_off = ip->frag_off | ntohs(IP_DF);
+                ip->frag_off = ip->frag_off | bpf_ntohs(IP_DF);
                 // Set TTL to 128
                 ip->ttl = 128;
                 // Set the IP identification field
-                ip->id = htons((*ip_id));
+                ip->id = bpf_htons((*ip_id));
 
                 // Swap src/dst IP
                 __u32 src_ip = ip->saddr;
@@ -610,10 +611,10 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 tcp->syn = 1;
                 tcp->ack = 1;
 
-                tcp->ack_seq = htonl(ntohl(tcp->seq) + 1);
-                tcp->seq = htonl(bpf_get_prandom_u32());       // Generate a random sequence number for TCP
+                tcp->ack_seq = bpf_htonl(bpf_ntohl(tcp->seq) + 1);
+                tcp->seq = bpf_htonl(bpf_get_prandom_u32());       // Generate a random sequence number for TCP
                 bpf_printk("TCP Sequence NR %d", tcp->seq);
-                tcp->window = htons(8192);
+                tcp->window = bpf_htons(8192);
 
                 // Swap src/dst TCP
                 __u16 src_tcp_port = tcp->source;
@@ -631,22 +632,22 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 }
                 else
                 {
-                    (*(u_int32_t *)(cursor +  0)) = htonl(0x020405b4);
-                    (*(u_int32_t *)(cursor +  4)) = htonl(0x01030308);
-                    (*(u_int32_t *)(cursor +  8)) = htonl(0x0402080a);
-                    (*(u_int32_t *)(cursor + 12)) = htonl(timestampValue);
-                    (*(u_int32_t *)(cursor + 16)) = htonl(0xffffffff);
+                    (*(u_int32_t *)(cursor +  0)) = bpf_htonl(0x020405b4);
+                    (*(u_int32_t *)(cursor +  4)) = bpf_htonl(0x01030308);
+                    (*(u_int32_t *)(cursor +  8)) = bpf_htonl(0x0402080a);
+                    (*(u_int32_t *)(cursor + 12)) = bpf_htonl(timestampValue);
+                    (*(u_int32_t *)(cursor + 16)) = bpf_htonl(0xffffffff);
                 }
 
                 update_ip_checksum(tcp, sizeof(struct tcphdr) + options_len, &tcp->check);
 
                 // Update the IP packet
                 // Set IP don't fragment
-                ip->frag_off = ip->frag_off | ntohs(IP_DF);
+                ip->frag_off = ip->frag_off | bpf_ntohs(IP_DF);
                 // Set TTL to 128
                 ip->ttl = 128;
                 // Set the IP identification field
-                ip->id = htons((*ip_id));
+                ip->id = bpf_htons((*ip_id));
 
                 // Swap src/dst IP
                 __u32 src_ip = ip->saddr;
@@ -666,9 +667,9 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 tcp->syn = 1;
                 tcp->ack = 1;
 
-                tcp->seq = htonl(bpf_get_prandom_u32());       // Generate a random sequence number for TCP
+                tcp->seq = bpf_htonl(bpf_get_prandom_u32());       // Generate a random sequence number for TCP
                 bpf_printk("TCP Sequence NR %d", tcp->seq);
-                tcp->window = htons(8192);
+                tcp->window = bpf_htons(8192);
 
                 // Swap src/dst TCP
                 __u16 src_tcp_port = tcp->source;
@@ -686,18 +687,18 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 }
                 else
                 {
-                    (*(u_int32_t *)(cursor +  0)) = htonl(0x020405b4);
-                    (*(u_int32_t *)(cursor +  4)) = htonl(0x01030308);
-                    (*(u_int32_t *)(cursor +  8)) = htonl(0x0402080a);
-                    (*(u_int32_t *)(cursor + 12)) = htonl(timestampValue);
-                    (*(u_int32_t *)(cursor + 16)) = htonl(0xffffffff);
+                    (*(u_int32_t *)(cursor +  0)) = bpf_htonl(0x020405b4);
+                    (*(u_int32_t *)(cursor +  4)) = bpf_htonl(0x01030308);
+                    (*(u_int32_t *)(cursor +  8)) = bpf_htonl(0x0402080a);
+                    (*(u_int32_t *)(cursor + 12)) = bpf_htonl(timestampValue);
+                    (*(u_int32_t *)(cursor + 16)) = bpf_htonl(0xffffffff);
                 }
 
                 update_ip_checksum(tcp, sizeof(struct tcphdr) + options_len, &tcp->check);
 
                 // Update the IP packet
                 // Set the IP identification field
-                ip->id = htons((*ip_id));
+                ip->id = bpf_htons((*ip_id));
 
                 // Swap src/dst IP
                 __u32 src_ip = ip->saddr;
@@ -718,9 +719,9 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 tcp->syn = 1;
                 tcp->ack = 1;
 
-                tcp->seq = htonl(bpf_get_prandom_u32());       // Generate a random sequence number for TCP
+                tcp->seq = bpf_htonl(bpf_get_prandom_u32());       // Generate a random sequence number for TCP
                 bpf_printk("TCP Sequence NR %d", tcp->seq);
-                tcp->window = htons(8192);
+                tcp->window = bpf_htons(8192);
 
                 // Swap src/dst TCP
                 __u16 src_tcp_port = tcp->source;
@@ -738,18 +739,18 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 }
                 else
                 {
-                    (*(u_int32_t *)(cursor +  0)) = htonl(0x020405b4);
-                    (*(u_int32_t *)(cursor +  4)) = htonl(0x01030308);
-                    (*(u_int32_t *)(cursor +  8)) = htonl(0x0101080a);
-                    (*(u_int32_t *)(cursor + 12)) = htonl(timestampValue);
-                    (*(u_int32_t *)(cursor + 16)) = htonl(0xffffffff);
+                    (*(u_int32_t *)(cursor +  0)) = bpf_htonl(0x020405b4);
+                    (*(u_int32_t *)(cursor +  4)) = bpf_htonl(0x01030308);
+                    (*(u_int32_t *)(cursor +  8)) = bpf_htonl(0x0101080a);
+                    (*(u_int32_t *)(cursor + 12)) = bpf_htonl(timestampValue);
+                    (*(u_int32_t *)(cursor + 16)) = bpf_htonl(0xffffffff);
                 }
 
                 update_ip_checksum(tcp, sizeof(struct tcphdr) + options_len, &tcp->check);
 
                 // Update the IP packet
                 // Set the IP identification field
-                ip->id = htons((*ip_id));
+                ip->id = bpf_htons((*ip_id));
 
                 // Swap src/dst IP
                 __u32 src_ip = ip->saddr;
@@ -791,9 +792,9 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 tcp->syn = 1;
                 tcp->ack = 1;
 
-                tcp->seq = htonl(bpf_get_prandom_u32());       // Generate a random sequence number for TCP
+                tcp->seq = bpf_htonl(bpf_get_prandom_u32());       // Generate a random sequence number for TCP
                 bpf_printk("TCP Sequence NR %d", tcp->seq);
-                tcp->window = htons(8192);
+                tcp->window = bpf_htons(8192);
 
                 // Swap src/dst TCP
                 __u16 src_tcp_port = tcp->source;
@@ -812,18 +813,18 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 }
                 else
                 {
-                    (*(u_int32_t *)(cursor +  0)) = htonl(0x020405b4);
-                    (*(u_int32_t *)(cursor +  4)) = htonl(0x01030308);
-                    (*(u_int32_t *)(cursor +  8)) = htonl(0x0402080a);
-                    (*(u_int32_t *)(cursor + 12)) = htonl(timestampValue);
-                    (*(u_int32_t *)(cursor + 16)) = htonl(0xffffffff);
+                    (*(u_int32_t *)(cursor +  0)) = bpf_htonl(0x020405b4);
+                    (*(u_int32_t *)(cursor +  4)) = bpf_htonl(0x01030308);
+                    (*(u_int32_t *)(cursor +  8)) = bpf_htonl(0x0402080a);
+                    (*(u_int32_t *)(cursor + 12)) = bpf_htonl(timestampValue);
+                    (*(u_int32_t *)(cursor + 16)) = bpf_htonl(0xffffffff);
                 }
 
                 update_ip_checksum(tcp, sizeof(struct tcphdr) + options_len, &tcp->check);
 
                 // Update the IP packet
                 // Set the IP identification field
-                ip->id = htons((*ip_id));
+                ip->id = bpf_htons((*ip_id));
 
                 // Swap src/dst IP
                 __u32 src_ip = ip->saddr;
@@ -846,9 +847,9 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 tcp->syn = 1;
                 tcp->ack = 1;
 
-                tcp->seq = htonl(bpf_get_prandom_u32());       // Generate a random sequence number for TCP
+                tcp->seq = bpf_htonl(bpf_get_prandom_u32());       // Generate a random sequence number for TCP
                 bpf_printk("TCP Sequence NR %d", tcp->seq);
-                tcp->window = htons(8192);
+                tcp->window = bpf_htons(8192);
 
                 // Swap src/dst TCP
                 __u16 src_tcp_port = tcp->source;
@@ -866,18 +867,18 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 }
                 else
                 {
-                    (*(u_int32_t *)(cursor +  0)) = htonl(0x020405b4);
-                    (*(u_int32_t *)(cursor +  4)) = htonl(0x01030308);
-                    (*(u_int32_t *)(cursor +  8)) = htonl(0x0402080a);
-                    (*(u_int32_t *)(cursor + 12)) = htonl(timestampValue);
-                    (*(u_int32_t *)(cursor + 16)) = htonl(0xffffffff);
+                    (*(u_int32_t *)(cursor +  0)) = bpf_htonl(0x020405b4);
+                    (*(u_int32_t *)(cursor +  4)) = bpf_htonl(0x01030308);
+                    (*(u_int32_t *)(cursor +  8)) = bpf_htonl(0x0402080a);
+                    (*(u_int32_t *)(cursor + 12)) = bpf_htonl(timestampValue);
+                    (*(u_int32_t *)(cursor + 16)) = bpf_htonl(0xffffffff);
                 }
 
                 update_ip_checksum(tcp, sizeof(struct tcphdr) + options_len, &tcp->check);
 
                 // Update the IP packet
                 // Set the IP identification field
-                ip->id = htons((*ip_id));
+                ip->id = bpf_htons((*ip_id));
 
                 // Swap src/dst IP
                 __u32 src_ip = ip->saddr;
@@ -909,9 +910,9 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 tcp->syn = 1;
                 tcp->ack = 1;
 
-                tcp->seq = htonl(bpf_get_prandom_u32());       // Generate a random sequence number for TCP
+                tcp->seq = bpf_htonl(bpf_get_prandom_u32());       // Generate a random sequence number for TCP
                 bpf_printk("TCP Sequence NR %d", tcp->seq);
-                tcp->window = htons(8192);
+                tcp->window = bpf_htons(8192);
 
                 // Swap src/dst TCP
                 __u16 src_tcp_port = tcp->source;
@@ -929,17 +930,17 @@ int xdp_prog1(struct CTXTYPE *ctx) {
                 }
                 else
                 {
-                    (*(u_int32_t *)(cursor +  0)) = htonl(0x020405b4);
-                    (*(u_int32_t *)(cursor +  4)) = htonl(0x0402080a);
-                    (*(u_int32_t *)(cursor +  8)) = htonl(timestampValue);
-                    (*(u_int32_t *)(cursor + 12)) = htonl(0xffffffff);
+                    (*(u_int32_t *)(cursor +  0)) = bpf_htonl(0x020405b4);
+                    (*(u_int32_t *)(cursor +  4)) = bpf_htonl(0x0402080a);
+                    (*(u_int32_t *)(cursor +  8)) = bpf_htonl(timestampValue);
+                    (*(u_int32_t *)(cursor + 12)) = bpf_htonl(0xffffffff);
                 }
 
                 update_ip_checksum(tcp, sizeof(struct tcphdr) + options_len, &tcp->check);
 
                 // Update the IP packet
                 // Set the IP identification field
-                ip->id = htons((*ip_id));
+                ip->id = bpf_htons((*ip_id));
 
                 // Swap src/dst IP
                 __u32 src_ip = ip->saddr;
@@ -959,9 +960,9 @@ int xdp_prog1(struct CTXTYPE *ctx) {
             case TCP_NMAP_T7_P1:
             {
                 // Update TCP packet
-                tcp->window = htons(0);
-                tcp->ack_seq = htonl(ntohl(tcp->seq) + 1);
-                tcp->seq = htons(0);
+                tcp->window = bpf_htons(0);
+                tcp->ack_seq = bpf_htonl(bpf_ntohl(tcp->seq) + 1);
+                tcp->seq = bpf_htons(0);
                 tcp->ack = 1;
                 tcp->rst = 1;
                 tcp->syn = 0;
@@ -984,11 +985,11 @@ int xdp_prog1(struct CTXTYPE *ctx) {
 
                 // Update the IP packet
                 // Set IP don't fragment
-                ip->frag_off = ip->frag_off | ntohs(IP_DF);
+                ip->frag_off = ip->frag_off | bpf_ntohs(IP_DF);
                 ip->ttl = 128;
-                ip->tot_len = htons(40);
+                ip->tot_len = bpf_htons(40);
                 // Set the IP identification field
-                ip->id = htons((*ip_id));
+                ip->id = bpf_htons((*ip_id));
 
                 // Swap src/dst IP
                 __u32 src_ip = ip->saddr;
@@ -1014,9 +1015,9 @@ int xdp_prog1(struct CTXTYPE *ctx) {
             case TCP_NMAP_T6_P1:
             {
                 // Update TCP packet
-                tcp->window = htons(0);
+                tcp->window = bpf_htons(0);
                 tcp->seq = tcp->ack_seq;
-                tcp->ack_seq = htonl(bpf_get_prandom_u32());
+                tcp->ack_seq = bpf_htonl(bpf_get_prandom_u32());
                 tcp->ack = 0;
                 tcp->rst = 1;
                 tcp->syn = 0;
@@ -1032,11 +1033,11 @@ int xdp_prog1(struct CTXTYPE *ctx) {
 
                 // Update the IP packet
                 // Set IP don't fragment
-                ip->frag_off = ip->frag_off | ntohs(IP_DF);
+                ip->frag_off = ip->frag_off | bpf_ntohs(IP_DF);
                 ip->ttl = 128;
-                ip->tot_len = htons(40);
+                ip->tot_len = bpf_htons(40);
                 // Set the IP identification field
-                ip->id = htons((*ip_id));
+                ip->id = bpf_htons((*ip_id));
 
                 // Swap src/dst IP
                 __u32 src_ip = ip->saddr;
@@ -1061,9 +1062,9 @@ int xdp_prog1(struct CTXTYPE *ctx) {
             case TCP_NMAP_T2_P1:
             {
                 // Update TCP packet
-                tcp->window = htons(0);
+                tcp->window = bpf_htons(0);
                 tcp->ack_seq = tcp->seq;
-                tcp->seq = htons(0);
+                tcp->seq = bpf_htons(0);
                 tcp->ack = 1;
                 tcp->rst = 1;
                 tcp->syn = 0;
@@ -1079,11 +1080,11 @@ int xdp_prog1(struct CTXTYPE *ctx) {
 
                 // Update the IP packet
                 // Set IP don't fragment
-                ip->frag_off = ip->frag_off | ntohs(IP_DF);
+                ip->frag_off = ip->frag_off | bpf_ntohs(IP_DF);
                 ip->ttl = 128;
-                ip->tot_len = htons(40);
+                ip->tot_len = bpf_htons(40);
                 // Set the IP identification field
-                ip->id = htons((*ip_id));
+                ip->id = bpf_htons((*ip_id));
 
                 // Swap src/dst IP
                 __u32 src_ip = ip->saddr;
@@ -1151,7 +1152,7 @@ int xdp_prog1(struct CTXTYPE *ctx) {
             return DEFAULT_ACTION;
         }
         struct udphdr *udp = data + sizeof(*eth) + sizeof(*ip);
-        u_int32_t udp_data_len = htons(udp->len) - sizeof(struct udphdr);
+        u_int32_t udp_data_len = bpf_htons(udp->len) - sizeof(struct udphdr);
         if (udp_data_len != NMAP_UDP_PROBE_DATA_LEN)    // This is not the NMAP probe
         {
             return DEFAULT_ACTION;
@@ -1163,8 +1164,8 @@ int xdp_prog1(struct CTXTYPE *ctx) {
         // We probably need to use a BPF map to do this
 
 #ifdef DEBUG
-        bpf_printk("Traffic for port %d", ntohs(udp->dest));
-        bpf_printk("ip length was %d", ntohs(ip->tot_len));
+        bpf_printk("Traffic for port %d", bpf_ntohs(udp->dest));
+        bpf_printk("ip length was %d", bpf_ntohs(ip->tot_len));
         bpf_printk("Start = %p, end = %p (%d)", ctx->data, ctx->data_end, ctx->data_end - ctx->data);
 #endif
 
@@ -1244,20 +1245,20 @@ int xdp_prog1(struct CTXTYPE *ctx) {
 
         // Update the existing IP header
         ip->protocol = IPPROTO_ICMP;
-        ip->tot_len = htons(ntohs(ip->tot_len) + new_header_size);
+        ip->tot_len = bpf_htons(bpf_ntohs(ip->tot_len) + new_header_size);
 
 #ifdef DEBUG
-        bpf_printk("ip length is %d", ntohs(ip->tot_len));
+        bpf_printk("ip length is %d", bpf_ntohs(ip->tot_len));
 #endif
 
         // Clear don't fragement
-        if (ip->frag_off & ntohs(IP_DF))
-            ip->frag_off = ip->frag_off ^ ntohs(IP_DF);
+        if (ip->frag_off & bpf_ntohs(IP_DF))
+            ip->frag_off = ip->frag_off ^ bpf_ntohs(IP_DF);
 
         // Set TTL to 128
         ip->ttl = 128;
         // Set the IP identification field
-       ip->id = htons((*ip_id));
+       ip->id = bpf_htons((*ip_id));
 
         // Swap src/dst IP
         __u32 src_ip = ip->saddr;
@@ -1302,13 +1303,13 @@ int xdp_prog1(struct CTXTYPE *ctx) {
         update_ip_checksum(icmp, sizeof(struct icmphdr), &icmp->checksum);
 
         // Clear don't fragement
-        if (ip->frag_off & ntohs(IP_DF))
-            ip->frag_off = ip->frag_off ^ ntohs(IP_DF);
+        if (ip->frag_off & bpf_ntohs(IP_DF))
+            ip->frag_off = ip->frag_off ^ bpf_ntohs(IP_DF);
 
         // Set TTL to 128
         ip->ttl = 128;
         // Set the IP identification field
-        ip->id = htons((*ip_id));
+        ip->id = bpf_htons((*ip_id));
 
         // Swap src/dst IP
         __u32 src_ip = ip->saddr;
