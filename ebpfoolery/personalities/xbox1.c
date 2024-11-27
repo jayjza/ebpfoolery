@@ -244,8 +244,8 @@ static inline __u8 detect_nmap_probes(void* data_end, struct tcphdr* tcp, struct
     bpf_printk("TCP Options length is %d and hdr %d", options_len, sizeof(struct tcphdr));
 #endif
 
-    void *blah = (void *)tcp + sizeof(struct tcphdr) + options_len;
 #ifdef DEBUG
+    void *blah = (void *)tcp + sizeof(struct tcphdr) + options_len;
     bpf_printk("tcp start = %p, data_end = %p (%d))", blah, data_end, data_end - (void *) tcp);
 #endif
 
@@ -258,7 +258,6 @@ static inline __u8 detect_nmap_probes(void* data_end, struct tcphdr* tcp, struct
     void *options_start = (void *) tcp + sizeof(struct tcphdr);
 
     void * cursor = options_start;
-    __u16 i;
     u_int16_t flags = bpf_ntohs(tcp_flag_word(tcp)) & 0x00FF;    // We only want a part of the word, and we only want the flag field
             // TODO: We need to check if the ports is open / closed, but we cannot determine that right now from XDP
 
@@ -284,9 +283,9 @@ static inline __u8 detect_nmap_probes(void* data_end, struct tcphdr* tcp, struct
             bpf_printk("Error: boundary exceeded while parsing TCP Options");
             return TCP_NMAP_NONE;
         }
-        u_int32_t value = (*(u_int32_t *)(cursor));
 
 #ifdef DEBUG
+        u_int32_t value = (*(u_int32_t *)(cursor));
         bpf_printk("NMap options part %x, %x, %x", (*(u_int32_t *)(cursor))     , TCP_NMAP_T7_PROBES_1, (*(u_int32_t *)(cursor)) == TCP_NMAP_T7_PROBES_1);
         bpf_printk("NMap options part %x, %x, %x", (*(u_int32_t *)(cursor + 4)) , TCP_NMAP_T7_PROBES_2, (*(u_int32_t *)(cursor + 4)) == TCP_NMAP_T7_PROBES_2 );
         bpf_printk("NMap options part %x, %x, %x", (*(u_int32_t *)(cursor + 8)) , TCP_NMAP_T7_PROBES_3, (*(u_int32_t *)(cursor + 8)) == TCP_NMAP_T7_PROBES_3);
