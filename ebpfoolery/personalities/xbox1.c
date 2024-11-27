@@ -13,6 +13,7 @@
 
 #define DEFAULT_ACTION XDP_PASS
 // #define DEBUG 1
+#define IP_DF 0x4000 /* Don't Fragment flag */
 
 // TCP FLAGS
 #define TCP_FIN 0x01
