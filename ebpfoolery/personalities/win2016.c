@@ -136,7 +136,7 @@ struct {
     __uint(type, BPF_MAP_TYPE_ARRAY);   // Array map type
     __uint(max_entries, 1);            // Single element in the array
     __type(key, __u32);                  // Key type
-    __type(value, __u32);                // Value type (u_int32_t)
+    __type(value, __u32);                // Value type (__u32)
 } ip_identification SEC(".maps");
 
 #define MAX_BUFFER_SIZE 512
@@ -263,7 +263,7 @@ static inline __u8 detect_nmap_probes(void* data_end, struct tcphdr* tcp, struct
     void *options_start = (void *) tcp + sizeof(struct tcphdr);
 
     void * cursor = options_start;
-    u_int16_t flags = bpf_ntohs(tcp_flag_word(tcp)) & 0x00FF;    // We only want a part of the word, and we only want the flag field
+    __u16 flags = bpf_ntohs(tcp_flag_word(tcp)) & 0x00FF;    // We only want a part of the word, and we only want the flag field
             // TODO: We need to check if the ports is open / closed, but we cannot determine that right now from XDP
 
     if ((flags == (TCP_SYN | TCP_CWR | TCP_ECE)) && (options_len == 12)) {
@@ -387,7 +387,7 @@ static inline __u8 detect_nmap_probes(void* data_end, struct tcphdr* tcp, struct
                  (*(__u32 *)(cursor + 12) == TCP_NMAP_T7_PROBES_4) &&
                  (*(__u32 *)(cursor + 16) == TCP_NMAP_T7_PROBES_5) )
         {
-            u_int16_t flags = bpf_ntohs(tcp_flag_word(tcp)) & 0x00FF;    // We only want a part of the word, and we only want the flag field
+            __u16 flags = bpf_ntohs(tcp_flag_word(tcp)) & 0x00FF;    // We only want a part of the word, and we only want the flag field
             if ((flags == (TCP_FIN | TCP_URG | TCP_PSH)) &&
                 (bpf_ntohs(tcp->window) == 65535) &&
                 (bpf_ntohs(ip->frag_off) & IP_DF) == 0)
@@ -549,7 +549,7 @@ int xdp_prog(struct xdp_md *ctx) {
 
         // check_flags(tcp);
         // check_options2(tcp, data_end);
-        u_int8_t nmap_result = detect_nmap_probes(data_end, tcp, ip);
+        __u8 nmap_result = detect_nmap_probes(data_end, tcp, ip);
         __u64 current_time = bpf_ktime_get_ns();
         __u32 timestampValue = (__u32)(current_time/1000000);
 #ifdef DEBUG
@@ -1188,7 +1188,7 @@ int xdp_prog(struct xdp_md *ctx) {
         // Copy the existing Ethernet Header
         for (int i = 0; i < sizeof(struct ethhdr); i++)
         {
-            *((u_int8_t *) eth + i) = *((u_int8_t *) old_eth_location + i);
+            *((__u8 *) eth + i) = *((__u8 *) old_eth_location + i);
         }
 
         // Copy the IP header
@@ -1202,7 +1202,7 @@ int xdp_prog(struct xdp_md *ctx) {
         ip = data + sizeof(struct ethhdr);
         for (int i = 0; i < sizeof(struct iphdr); i++)
         {
-            *((u_int8_t *) ip + i) = *((u_int8_t *) old_ip_header + i);
+            *((__u8 *) ip + i) = *((__u8 *) old_ip_header + i);
         }
 
 #ifdef DEBUG

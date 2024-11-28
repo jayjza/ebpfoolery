@@ -136,7 +136,7 @@ struct {
     __uint(type, BPF_MAP_TYPE_ARRAY);   // Array map type
     __uint(max_entries, 1);            // Single element in the array
     __type(key, __u32);                  // Key type
-    __type(value, __u32);                // Value type (u_int32_t)
+    __type(value, __u32);                // Value type (__u32)
 } ip_identification SEC(".maps");
 
 
@@ -244,7 +244,7 @@ static inline void update_ip_checksum(void *data, int len, __u16 *checksum_locat
 // }
 
 static inline __u8 detect_nmap_probes(void* data_end, struct tcphdr* tcp, struct iphdr *ip) {
-    u_int32_t options_len = tcp->doff*4 - sizeof(struct tcphdr);
+    __u32 options_len = tcp->doff*4 - sizeof(struct tcphdr);
 
 #ifdef DEBUG
     bpf_printk("TCP Options length is %d and hdr %d", options_len, sizeof(struct tcphdr));
@@ -264,7 +264,7 @@ static inline __u8 detect_nmap_probes(void* data_end, struct tcphdr* tcp, struct
     void *options_start = (void *) tcp + sizeof(struct tcphdr);
 
     void * cursor = options_start;
-    u_int16_t flags = bpf_ntohs(tcp_flag_word(tcp)) & 0x00FF;    // We only want a part of the word, and we only want the flag field
+    __u16 flags = bpf_ntohs(tcp_flag_word(tcp)) & 0x00FF;    // We only want a part of the word, and we only want the flag field
             // TODO: We need to check if the ports is open / closed, but we cannot determine that right now from XDP
 
     if ((flags == (TCP_SYN | TCP_CWR | TCP_ECE)) && (options_len == 12)) {
@@ -273,9 +273,9 @@ static inline __u8 detect_nmap_probes(void* data_end, struct tcphdr* tcp, struct
             bpf_printk("Error: boundary exceeded while parsing TCP Options");
             return TCP_NMAP_NONE;
         }
-        if ((*(u_int32_t *)(cursor) == TCP_NMAP_ECN_PROBE_1) &&
-            (*(u_int32_t *)(cursor + 4) == TCP_NMAP_ECN_PROBE_2) &&
-            (*(u_int32_t *)(cursor + 8) == TCP_NMAP_ECN_PROBE_3)) {
+        if ((*(__u32 *)(cursor) == TCP_NMAP_ECN_PROBE_1) &&
+            (*(__u32 *)(cursor + 4) == TCP_NMAP_ECN_PROBE_2) &&
+            (*(__u32 *)(cursor + 8) == TCP_NMAP_ECN_PROBE_3)) {
                 return TCP_NMAP_ECN;
         } else {
             return TCP_NMAP_NONE;
@@ -291,59 +291,59 @@ static inline __u8 detect_nmap_probes(void* data_end, struct tcphdr* tcp, struct
         }
 
 #ifdef DEBUG
-        u_int32_t value = (*(u_int32_t *)(cursor));
-        bpf_printk("NMap options part %x, %x, %x", (*(u_int32_t *)(cursor))     , TCP_NMAP_T7_PROBES_1, (*(u_int32_t *)(cursor)) == TCP_NMAP_T7_PROBES_1);
-        bpf_printk("NMap options part %x, %x, %x", (*(u_int32_t *)(cursor + 4)) , TCP_NMAP_T7_PROBES_2, (*(u_int32_t *)(cursor + 4)) == TCP_NMAP_T7_PROBES_2 );
-        bpf_printk("NMap options part %x, %x, %x", (*(u_int32_t *)(cursor + 8)) , TCP_NMAP_T7_PROBES_3, (*(u_int32_t *)(cursor + 8)) == TCP_NMAP_T7_PROBES_3);
-        bpf_printk("NMap options part %x, %x, %x", (*(u_int32_t *)(cursor + 12)), TCP_NMAP_T7_PROBES_4, (*(u_int32_t *)(cursor + 12)) == TCP_NMAP_T7_PROBES_4);
-        bpf_printk("NMap options part %x, %x, %x", (*(u_int32_t *)(cursor + 16)), TCP_NMAP_T7_PROBES_5, (*(u_int32_t *)(cursor + 16)) == TCP_NMAP_T7_PROBES_5);
+        __u32 value = (*(__u32 *)(cursor));
+        bpf_printk("NMap options part %x, %x, %x", (*(__u32 *)(cursor))     , TCP_NMAP_T7_PROBES_1, (*(__u32 *)(cursor)) == TCP_NMAP_T7_PROBES_1);
+        bpf_printk("NMap options part %x, %x, %x", (*(__u32 *)(cursor + 4)) , TCP_NMAP_T7_PROBES_2, (*(__u32 *)(cursor + 4)) == TCP_NMAP_T7_PROBES_2 );
+        bpf_printk("NMap options part %x, %x, %x", (*(__u32 *)(cursor + 8)) , TCP_NMAP_T7_PROBES_3, (*(__u32 *)(cursor + 8)) == TCP_NMAP_T7_PROBES_3);
+        bpf_printk("NMap options part %x, %x, %x", (*(__u32 *)(cursor + 12)), TCP_NMAP_T7_PROBES_4, (*(__u32 *)(cursor + 12)) == TCP_NMAP_T7_PROBES_4);
+        bpf_printk("NMap options part %x, %x, %x", (*(__u32 *)(cursor + 16)), TCP_NMAP_T7_PROBES_5, (*(__u32 *)(cursor + 16)) == TCP_NMAP_T7_PROBES_5);
 #endif
 
-        if ((*(u_int32_t *)(cursor) == TCP_NMAP_SEQ_PROBE_P1_1) &&
-             (*(u_int32_t *)(cursor + 4) == TCP_NMAP_SEQ_PROBE_P1_2) &&
-             (*(u_int32_t *)(cursor + 8) == TCP_NMAP_SEQ_PROBE_P1_3) &&
-             (*(u_int32_t *)(cursor + 12) == TCP_NMAP_SEQ_PROBE_P1_4) &&
-             (*(u_int32_t *)(cursor + 16) == TCP_NMAP_SEQ_PROBE_P1_5) &&
+        if ((*(__u32 *)(cursor) == TCP_NMAP_SEQ_PROBE_P1_1) &&
+             (*(__u32 *)(cursor + 4) == TCP_NMAP_SEQ_PROBE_P1_2) &&
+             (*(__u32 *)(cursor + 8) == TCP_NMAP_SEQ_PROBE_P1_3) &&
+             (*(__u32 *)(cursor + 12) == TCP_NMAP_SEQ_PROBE_P1_4) &&
+             (*(__u32 *)(cursor + 16) == TCP_NMAP_SEQ_PROBE_P1_5) &&
              (bpf_ntohs(tcp->window) == 1))
             {
                 // bpf_printk("NMap TCP probe packet 1 detected");
                 return TCP_NMAP_T1_P1;
             }
-        else if ((*(u_int32_t *)(cursor)      == TCP_NMAP_SEQ_PROBE_P2_1) &&
-                 (*(u_int32_t *)(cursor + 4)  == TCP_NMAP_SEQ_PROBE_P2_2) &&
-                 (*(u_int32_t *)(cursor + 8)  == TCP_NMAP_SEQ_PROBE_P2_3) &&
-                 (*(u_int32_t *)(cursor + 12) == TCP_NMAP_SEQ_PROBE_P2_4) &&
-                 (*(u_int32_t *)(cursor + 16) == TCP_NMAP_SEQ_PROBE_P2_5) &&
+        else if ((*(__u32 *)(cursor)      == TCP_NMAP_SEQ_PROBE_P2_1) &&
+                 (*(__u32 *)(cursor + 4)  == TCP_NMAP_SEQ_PROBE_P2_2) &&
+                 (*(__u32 *)(cursor + 8)  == TCP_NMAP_SEQ_PROBE_P2_3) &&
+                 (*(__u32 *)(cursor + 12) == TCP_NMAP_SEQ_PROBE_P2_4) &&
+                 (*(__u32 *)(cursor + 16) == TCP_NMAP_SEQ_PROBE_P2_5) &&
                  (bpf_ntohs(tcp->window) == 63))
         {
                 // bpf_printk("NMap TCP probe packet 2 detected");
                 return TCP_NMAP_T1_P2;
         }
-        else if ((*(u_int32_t *)(cursor)      == TCP_NMAP_SEQ_PROBE_P3_1) &&
-                 (*(u_int32_t *)(cursor + 4)  == TCP_NMAP_SEQ_PROBE_P3_2) &&
-                 (*(u_int32_t *)(cursor + 8)  == TCP_NMAP_SEQ_PROBE_P3_3) &&
-                 (*(u_int32_t *)(cursor + 12) == TCP_NMAP_SEQ_PROBE_P3_4) &&
-                 (*(u_int32_t *)(cursor + 16) == TCP_NMAP_SEQ_PROBE_P3_5) &&
+        else if ((*(__u32 *)(cursor)      == TCP_NMAP_SEQ_PROBE_P3_1) &&
+                 (*(__u32 *)(cursor + 4)  == TCP_NMAP_SEQ_PROBE_P3_2) &&
+                 (*(__u32 *)(cursor + 8)  == TCP_NMAP_SEQ_PROBE_P3_3) &&
+                 (*(__u32 *)(cursor + 12) == TCP_NMAP_SEQ_PROBE_P3_4) &&
+                 (*(__u32 *)(cursor + 16) == TCP_NMAP_SEQ_PROBE_P3_5) &&
                  (bpf_ntohs(tcp->window) == 4))
         {
                 // bpf_printk("NMap TCP probe packet 3 detected");
                 return TCP_NMAP_T1_P3;
         }
-        else if ((*(u_int32_t *)(cursor)      == TCP_NMAP_SEQ_PROBE_P5_1) &&
-                 (*(u_int32_t *)(cursor + 4)  == TCP_NMAP_SEQ_PROBE_P5_2) &&
-                 (*(u_int32_t *)(cursor + 8)  == TCP_NMAP_SEQ_PROBE_P5_3) &&
-                 (*(u_int32_t *)(cursor + 12) == TCP_NMAP_SEQ_PROBE_P5_4) &&
-                 (*(u_int32_t *)(cursor + 16) == TCP_NMAP_SEQ_PROBE_P5_5) &&
+        else if ((*(__u32 *)(cursor)      == TCP_NMAP_SEQ_PROBE_P5_1) &&
+                 (*(__u32 *)(cursor + 4)  == TCP_NMAP_SEQ_PROBE_P5_2) &&
+                 (*(__u32 *)(cursor + 8)  == TCP_NMAP_SEQ_PROBE_P5_3) &&
+                 (*(__u32 *)(cursor + 12) == TCP_NMAP_SEQ_PROBE_P5_4) &&
+                 (*(__u32 *)(cursor + 16) == TCP_NMAP_SEQ_PROBE_P5_5) &&
                  (bpf_ntohs(tcp->window) == 16))
         {
                 // bpf_printk("NMap TCP probe packet 5 detected");
                 return TCP_NMAP_T1_P5;
         }
-        else if ((*(u_int32_t *)(cursor)      == TCP_NMAP_T2_T6_PROBES_1) &&
-                 (*(u_int32_t *)(cursor + 4)  == TCP_NMAP_T2_T6_PROBES_2) &&
-                 (*(u_int32_t *)(cursor + 8)  == TCP_NMAP_T2_T6_PROBES_3) &&
-                 (*(u_int32_t *)(cursor + 12) == TCP_NMAP_T2_T6_PROBES_4) &&
-                 (*(u_int32_t *)(cursor + 16) == TCP_NMAP_T2_T6_PROBES_5) )
+        else if ((*(__u32 *)(cursor)      == TCP_NMAP_T2_T6_PROBES_1) &&
+                 (*(__u32 *)(cursor + 4)  == TCP_NMAP_T2_T6_PROBES_2) &&
+                 (*(__u32 *)(cursor + 8)  == TCP_NMAP_T2_T6_PROBES_3) &&
+                 (*(__u32 *)(cursor + 12) == TCP_NMAP_T2_T6_PROBES_4) &&
+                 (*(__u32 *)(cursor + 16) == TCP_NMAP_T2_T6_PROBES_5) )
         {
 
             if ((flags == 0) &&
@@ -382,13 +382,13 @@ static inline __u8 detect_nmap_probes(void* data_end, struct tcphdr* tcp, struct
                 return TCP_NMAP_T6_P1;
             }
         }
-        else if ((*(u_int32_t *)(cursor)      == TCP_NMAP_T7_PROBES_1) &&
-                 (*(u_int32_t *)(cursor + 4)  == TCP_NMAP_T7_PROBES_2) &&
-                 (*(u_int32_t *)(cursor + 8)  == TCP_NMAP_T7_PROBES_3) &&
-                 (*(u_int32_t *)(cursor + 12) == TCP_NMAP_T7_PROBES_4) &&
-                 (*(u_int32_t *)(cursor + 16) == TCP_NMAP_T7_PROBES_5) )
+        else if ((*(__u32 *)(cursor)      == TCP_NMAP_T7_PROBES_1) &&
+                 (*(__u32 *)(cursor + 4)  == TCP_NMAP_T7_PROBES_2) &&
+                 (*(__u32 *)(cursor + 8)  == TCP_NMAP_T7_PROBES_3) &&
+                 (*(__u32 *)(cursor + 12) == TCP_NMAP_T7_PROBES_4) &&
+                 (*(__u32 *)(cursor + 16) == TCP_NMAP_T7_PROBES_5) )
         {
-            u_int16_t flags = bpf_ntohs(tcp_flag_word(tcp)) & 0x00FF;    // We only want a part of the word, and we only want the flag field
+            __u16 flags = bpf_ntohs(tcp_flag_word(tcp)) & 0x00FF;    // We only want a part of the word, and we only want the flag field
             if ((flags == (TCP_FIN | TCP_URG | TCP_PSH)) &&
                 (bpf_ntohs(tcp->window) == 65535) &&
                 (bpf_ntohs(ip->frag_off) & IP_DF) == 0)
@@ -405,19 +405,19 @@ static inline __u8 detect_nmap_probes(void* data_end, struct tcphdr* tcp, struct
             bpf_printk("Error: boundary exceeded while parsing TCP Options");
             return TCP_NMAP_NONE;
         }
-        if ((*(u_int32_t *)(cursor)      == TCP_NMAP_SEQ_PROBE_P4_1) &&
-            (*(u_int32_t *)(cursor + 4)  == TCP_NMAP_SEQ_PROBE_P4_2) &&
-            (*(u_int32_t *)(cursor + 8)  == TCP_NMAP_SEQ_PROBE_P4_3) &&
-            (*(u_int32_t *)(cursor + 12) == TCP_NMAP_SEQ_PROBE_P4_4) &&
+        if ((*(__u32 *)(cursor)      == TCP_NMAP_SEQ_PROBE_P4_1) &&
+            (*(__u32 *)(cursor + 4)  == TCP_NMAP_SEQ_PROBE_P4_2) &&
+            (*(__u32 *)(cursor + 8)  == TCP_NMAP_SEQ_PROBE_P4_3) &&
+            (*(__u32 *)(cursor + 12) == TCP_NMAP_SEQ_PROBE_P4_4) &&
             (bpf_ntohs(tcp->window) == 4))
             {
                 // bpf_printk("NMap TCP probe packet 4 detected");
                 return TCP_NMAP_T1_P4;
             }
-        else if ((*(u_int32_t *)(cursor)      == TCP_NMAP_SEQ_PROBE_P6_1) &&
-                 (*(u_int32_t *)(cursor + 4)  == TCP_NMAP_SEQ_PROBE_P6_2) &&
-                 (*(u_int32_t *)(cursor + 8)  == TCP_NMAP_SEQ_PROBE_P6_3) &&
-                 (*(u_int32_t *)(cursor + 12) == TCP_NMAP_SEQ_PROBE_P6_4) &&
+        else if ((*(__u32 *)(cursor)      == TCP_NMAP_SEQ_PROBE_P6_1) &&
+                 (*(__u32 *)(cursor + 4)  == TCP_NMAP_SEQ_PROBE_P6_2) &&
+                 (*(__u32 *)(cursor + 8)  == TCP_NMAP_SEQ_PROBE_P6_3) &&
+                 (*(__u32 *)(cursor + 12) == TCP_NMAP_SEQ_PROBE_P6_4) &&
                  (bpf_ntohs(tcp->window) == 512))
         {
                 // bpf_printk("NMap TCP probe packet 6 detected");
@@ -464,8 +464,8 @@ int xdp_prog(struct xdp_md *ctx) {
     bpf_printk("Ether Proto: 0x%x", h_proto);
 #endif
 
-    u_int32_t ip_id_idx = 0;
-    u_int32_t *ip_id = bpf_map_lookup_elem(&ip_identification, &ip_id_idx);
+    __u32 ip_id_idx = 0;
+    __u32 *ip_id = bpf_map_lookup_elem(&ip_identification, &ip_id_idx);
     // Initialize the identifier with a pseudo-random value
     if (!ip_id)
     {
@@ -550,9 +550,9 @@ int xdp_prog(struct xdp_md *ctx) {
 
         // check_flags(tcp);
         // check_options2(tcp, data_end);
-        u_int8_t nmap_result = detect_nmap_probes(data_end, tcp, ip);
+        __u8 nmap_result = detect_nmap_probes(data_end, tcp, ip);
         __u64 current_time = bpf_ktime_get_ns();
-        u_int32_t timestampValue = (__u32)(current_time/10000000);
+        __u32 timestampValue = (__u32)(current_time/10000000);
 #ifdef DEBUG
         bpf_printk("Timestamp: %d", timestampValue);
         bpf_printk("detect_nmap_probes %d", nmap_result);
@@ -576,7 +576,7 @@ int xdp_prog(struct xdp_md *ctx) {
                 tcp->dest = src_tcp_port;
 
                 // Set the TCP options
-                u_int32_t options_len = 12;
+                __u32 options_len = 12;
                 void *options_start = (void *) tcp + sizeof(struct tcphdr);
                 void * cursor = options_start;
                 if (cursor + 12 > data_end)
@@ -586,9 +586,9 @@ int xdp_prog(struct xdp_md *ctx) {
                 }
                 else
                 {
-                    (*(u_int32_t *)(cursor +  0)) = bpf_htonl(0x020405b4);
-                    (*(u_int32_t *)(cursor +  4)) = bpf_htonl(0x01030308);
-                    (*(u_int32_t *)(cursor +  8)) = bpf_htonl(0x01010402);
+                    (*(__u32 *)(cursor +  0)) = bpf_htonl(0x020405b4);
+                    (*(__u32 *)(cursor +  4)) = bpf_htonl(0x01030308);
+                    (*(__u32 *)(cursor +  8)) = bpf_htonl(0x01010402);
                 }
                 update_ip_checksum(tcp, sizeof(struct tcphdr) + options_len, &tcp->check);
 
@@ -627,7 +627,7 @@ int xdp_prog(struct xdp_md *ctx) {
                 tcp->dest = src_tcp_port;
 
                 // Set the TCP options
-                u_int32_t options_len = 20;
+                __u32 options_len = 20;
                 void *options_start = (void *) tcp + sizeof(struct tcphdr);
                 void * cursor = options_start;
                 if (cursor + 20 > data_end)
@@ -637,11 +637,11 @@ int xdp_prog(struct xdp_md *ctx) {
                 }
                 else
                 {
-                    (*(u_int32_t *)(cursor +  0)) = bpf_htonl(0x020405b4);
-                    (*(u_int32_t *)(cursor +  4)) = bpf_htonl(0x01030308);
-                    (*(u_int32_t *)(cursor +  8)) = bpf_htonl(0x0402080a);
-                    (*(u_int32_t *)(cursor + 12)) = bpf_htonl(timestampValue);
-                    (*(u_int32_t *)(cursor + 16)) = bpf_htonl(0xffffffff);
+                    (*(__u32 *)(cursor +  0)) = bpf_htonl(0x020405b4);
+                    (*(__u32 *)(cursor +  4)) = bpf_htonl(0x01030308);
+                    (*(__u32 *)(cursor +  8)) = bpf_htonl(0x0402080a);
+                    (*(__u32 *)(cursor + 12)) = bpf_htonl(timestampValue);
+                    (*(__u32 *)(cursor + 16)) = bpf_htonl(0xffffffff);
                 }
 
                 update_ip_checksum(tcp, sizeof(struct tcphdr) + options_len, &tcp->check);
@@ -682,7 +682,7 @@ int xdp_prog(struct xdp_md *ctx) {
                 tcp->dest = src_tcp_port;
 
                 // Set the TCP options
-                u_int32_t options_len = 20;
+                __u32 options_len = 20;
                 void *options_start = (void *) tcp + sizeof(struct tcphdr);
                 void * cursor = options_start;
                 if (cursor + 20 > data_end)
@@ -692,11 +692,11 @@ int xdp_prog(struct xdp_md *ctx) {
                 }
                 else
                 {
-                    (*(u_int32_t *)(cursor +  0)) = bpf_htonl(0x020405b4);
-                    (*(u_int32_t *)(cursor +  4)) = bpf_htonl(0x01030308);
-                    (*(u_int32_t *)(cursor +  8)) = bpf_htonl(0x0402080a);
-                    (*(u_int32_t *)(cursor + 12)) = bpf_htonl(timestampValue);
-                    (*(u_int32_t *)(cursor + 16)) = bpf_htonl(0xffffffff);
+                    (*(__u32 *)(cursor +  0)) = bpf_htonl(0x020405b4);
+                    (*(__u32 *)(cursor +  4)) = bpf_htonl(0x01030308);
+                    (*(__u32 *)(cursor +  8)) = bpf_htonl(0x0402080a);
+                    (*(__u32 *)(cursor + 12)) = bpf_htonl(timestampValue);
+                    (*(__u32 *)(cursor + 16)) = bpf_htonl(0xffffffff);
                 }
 
                 update_ip_checksum(tcp, sizeof(struct tcphdr) + options_len, &tcp->check);
@@ -734,7 +734,7 @@ int xdp_prog(struct xdp_md *ctx) {
                 tcp->dest = src_tcp_port;
 
                                 // Set the TCP options
-                u_int32_t options_len = 20;
+                __u32 options_len = 20;
                 void *options_start = (void *) tcp + sizeof(struct tcphdr);
                 void * cursor = options_start;
                 if (cursor + 20 > data_end)
@@ -744,11 +744,11 @@ int xdp_prog(struct xdp_md *ctx) {
                 }
                 else
                 {
-                    (*(u_int32_t *)(cursor +  0)) = bpf_htonl(0x020405b4);
-                    (*(u_int32_t *)(cursor +  4)) = bpf_htonl(0x01030308);
-                    (*(u_int32_t *)(cursor +  8)) = bpf_htonl(0x0101080a);
-                    (*(u_int32_t *)(cursor + 12)) = bpf_htonl(timestampValue);
-                    (*(u_int32_t *)(cursor + 16)) = bpf_htonl(0xffffffff);
+                    (*(__u32 *)(cursor +  0)) = bpf_htonl(0x020405b4);
+                    (*(__u32 *)(cursor +  4)) = bpf_htonl(0x01030308);
+                    (*(__u32 *)(cursor +  8)) = bpf_htonl(0x0101080a);
+                    (*(__u32 *)(cursor + 12)) = bpf_htonl(timestampValue);
+                    (*(__u32 *)(cursor + 16)) = bpf_htonl(0xffffffff);
                 }
 
                 update_ip_checksum(tcp, sizeof(struct tcphdr) + options_len, &tcp->check);
@@ -807,7 +807,7 @@ int xdp_prog(struct xdp_md *ctx) {
                 tcp->dest = src_tcp_port;
 
                 // Set the TCP options
-                u_int32_t options_len = 20;
+                __u32 options_len = 20;
                 void *options_start = (void *) tcp + sizeof(struct tcphdr);
                 void * cursor = options_start;
 
@@ -818,11 +818,11 @@ int xdp_prog(struct xdp_md *ctx) {
                 }
                 else
                 {
-                    (*(u_int32_t *)(cursor +  0)) = bpf_htonl(0x020405b4);
-                    (*(u_int32_t *)(cursor +  4)) = bpf_htonl(0x01030308);
-                    (*(u_int32_t *)(cursor +  8)) = bpf_htonl(0x0402080a);
-                    (*(u_int32_t *)(cursor + 12)) = bpf_htonl(timestampValue);
-                    (*(u_int32_t *)(cursor + 16)) = bpf_htonl(0xffffffff);
+                    (*(__u32 *)(cursor +  0)) = bpf_htonl(0x020405b4);
+                    (*(__u32 *)(cursor +  4)) = bpf_htonl(0x01030308);
+                    (*(__u32 *)(cursor +  8)) = bpf_htonl(0x0402080a);
+                    (*(__u32 *)(cursor + 12)) = bpf_htonl(timestampValue);
+                    (*(__u32 *)(cursor + 16)) = bpf_htonl(0xffffffff);
                 }
 
                 update_ip_checksum(tcp, sizeof(struct tcphdr) + options_len, &tcp->check);
@@ -862,7 +862,7 @@ int xdp_prog(struct xdp_md *ctx) {
                 tcp->dest = src_tcp_port;
 
                 // Set the TCP options
-                u_int32_t options_len = 20;
+                __u32 options_len = 20;
                 void *options_start = (void *) tcp + sizeof(struct tcphdr);
                 void * cursor = options_start;
                 if (cursor + 20 > data_end)
@@ -872,11 +872,11 @@ int xdp_prog(struct xdp_md *ctx) {
                 }
                 else
                 {
-                    (*(u_int32_t *)(cursor +  0)) = bpf_htonl(0x020405b4);
-                    (*(u_int32_t *)(cursor +  4)) = bpf_htonl(0x01030308);
-                    (*(u_int32_t *)(cursor +  8)) = bpf_htonl(0x0402080a);
-                    (*(u_int32_t *)(cursor + 12)) = bpf_htonl(timestampValue);
-                    (*(u_int32_t *)(cursor + 16)) = bpf_htonl(0xffffffff);
+                    (*(__u32 *)(cursor +  0)) = bpf_htonl(0x020405b4);
+                    (*(__u32 *)(cursor +  4)) = bpf_htonl(0x01030308);
+                    (*(__u32 *)(cursor +  8)) = bpf_htonl(0x0402080a);
+                    (*(__u32 *)(cursor + 12)) = bpf_htonl(timestampValue);
+                    (*(__u32 *)(cursor + 16)) = bpf_htonl(0xffffffff);
                 }
 
                 update_ip_checksum(tcp, sizeof(struct tcphdr) + options_len, &tcp->check);
@@ -925,7 +925,7 @@ int xdp_prog(struct xdp_md *ctx) {
                 tcp->dest = src_tcp_port;
 
                 // Set the TCP options
-                u_int32_t options_len = 16;
+                __u32 options_len = 16;
                 void *options_start = (void *) tcp + sizeof(struct tcphdr);
                 void * cursor = options_start;
                 if (cursor + 16 > data_end)
@@ -935,10 +935,10 @@ int xdp_prog(struct xdp_md *ctx) {
                 }
                 else
                 {
-                    (*(u_int32_t *)(cursor +  0)) = bpf_htonl(0x020405b4);
-                    (*(u_int32_t *)(cursor +  4)) = bpf_htonl(0x0402080a);
-                    (*(u_int32_t *)(cursor +  8)) = bpf_htonl(timestampValue);
-                    (*(u_int32_t *)(cursor + 12)) = bpf_htonl(0xffffffff);
+                    (*(__u32 *)(cursor +  0)) = bpf_htonl(0x020405b4);
+                    (*(__u32 *)(cursor +  4)) = bpf_htonl(0x0402080a);
+                    (*(__u32 *)(cursor +  8)) = bpf_htonl(timestampValue);
+                    (*(__u32 *)(cursor + 12)) = bpf_htonl(0xffffffff);
                 }
 
                 update_ip_checksum(tcp, sizeof(struct tcphdr) + options_len, &tcp->check);
@@ -1157,7 +1157,7 @@ int xdp_prog(struct xdp_md *ctx) {
             return DEFAULT_ACTION;
         }
         struct udphdr *udp = data + sizeof(*eth) + sizeof(*ip);
-        u_int32_t udp_data_len = bpf_htons(udp->len) - sizeof(struct udphdr);
+        __u32 udp_data_len = bpf_htons(udp->len) - sizeof(struct udphdr);
         if (udp_data_len != NMAP_UDP_PROBE_DATA_LEN)    // This is not the NMAP probe
         {
             return DEFAULT_ACTION;
@@ -1208,7 +1208,7 @@ int xdp_prog(struct xdp_md *ctx) {
         // Copy the existing Ethernet Header
         for (int i = 0; i < sizeof(struct ethhdr); i++)
         {
-            *((u_int8_t *) eth + i) = *((u_int8_t *) old_eth_location + i);
+            *((__u8 *) eth + i) = *((__u8 *) old_eth_location + i);
         }
 
         // Copy the IP header
@@ -1222,7 +1222,7 @@ int xdp_prog(struct xdp_md *ctx) {
         ip = data + sizeof(struct ethhdr);
         for (int i = 0; i < sizeof(struct iphdr); i++)
         {
-            *((u_int8_t *) ip + i) = *((u_int8_t *) old_ip_header + i);
+            *((__u8 *) ip + i) = *((__u8 *) old_ip_header + i);
         }
 
 #ifdef DEBUG
@@ -1236,8 +1236,8 @@ int xdp_prog(struct xdp_md *ctx) {
         icmp->checksum = 0;
         icmp->un.gateway = 0;
 
-        u_int32_t pkt_len = sizeof(struct icmphdr) + sizeof(struct iphdr) + sizeof(struct udphdr) + NMAP_UDP_PROBE_DATA_LEN;
-        // u_int32_t pkt_len = ((struct iphdr *)old_ip_header)->tot_len + sizeof(struct icmphdr);
+        __u32 pkt_len = sizeof(struct icmphdr) + sizeof(struct iphdr) + sizeof(struct udphdr) + NMAP_UDP_PROBE_DATA_LEN;
+        // __u32 pkt_len = ((struct iphdr *)old_ip_header)->tot_len + sizeof(struct icmphdr);
         if ( ((void*)icmp) + pkt_len > data_end)
         {
              bpf_printk("packet length exceeds data_end");
