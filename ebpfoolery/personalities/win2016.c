@@ -427,7 +427,7 @@ static inline __u8 detect_nmap_probes(void* data_end, struct tcphdr* tcp, struct
 }
 
 SEC("xdp")
-int xdp_prog1(struct xdp_md *ctx) {
+int xdp_prog(struct xdp_md *ctx) {
 
     void* data_end = (void*)(long)ctx->data_end;
     void* data = (void*)(long)ctx->data;
@@ -1313,3 +1313,5 @@ int xdp_prog1(struct xdp_md *ctx) {
 #endif
     return rc;
 }
+
+char _license[] SEC("license") = "GPL";
