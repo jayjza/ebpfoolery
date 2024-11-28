@@ -424,7 +424,7 @@ static inline __u8 detect_nmap_probes(void* data_end, struct tcphdr* tcp, struct
     return TCP_NMAP_NONE;
 }
 
-
+SEC("xdp")
 int xdp_prog1(struct xdp_md *ctx) {
 
     void* data_end = (void*)(long)ctx->data_end;
