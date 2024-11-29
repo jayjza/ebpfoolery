@@ -11,14 +11,32 @@ Thinkst Canary offers a device that mimics real life targets to an incredible de
 eBPFooling uses the magic of eBPF (and XDP) to mimic certain OS IP Stacks (currently Windows 2016 and Playstation 4) meaning that if an attacker nmaps your Ubuntu machine, you can choose what OS they are going to get back.
 
 # Usage
+```
+./ebpfooling
+Usage: ebpfooling [OPTIONS] COMMAND [ARGS]...
+
+  Welcome to some Tom eBPFoolery
+
+Options:
+  --help  Show this message and exit.
+
+Commands:
+  ippers    Manage ippers functionality
+  portscan  Manage portscan functionality
+```
 ## View Personalities
 ```
-./ebpfooling -l
+./ebpfooling ippers available
 ```
 
-## Running
+## Enabling Ippers
 ```
-./ebpfooling -i <network_interface> -p <personality>
+./ebpfooling ippers enable <PERSONALITY> <INTERFACE>
+```
+
+## Enabling Portscan
+```
+./ebpfooling portscan enable <INTERFACE>
 ```
 
 # Installation

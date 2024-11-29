@@ -20,3 +20,5 @@ RUN :\
    && /pythonenv3/bin/python -m pip install --upgrade pip \
    && /pythonenv3/bin/python -m pip install --no-cache-dir -r /workspace/requirements.txt \
    && :
+
+ENV PATH="/pythonenv3/bin:${PATH}"
