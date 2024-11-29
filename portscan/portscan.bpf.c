@@ -36,64 +36,63 @@ int xdp(struct xdp_md *ctx) {
     if (bpf_ntohs(eth->h_proto) != ETH_P_IP)
         return DEFAULT_ACTION;
 
-    struct iphdr *iph = data + sizeof(struct ethhdr);
+    struct iphdr *ip_header = data + sizeof(struct ethhdr);
     if (data + sizeof(struct ethhdr) + sizeof(struct iphdr) > data_end)
         return DEFAULT_ACTION;
 
-    if (iph->protocol != IPPROTO_TCP)
+    if (ip_header->protocol != IPPROTO_TCP)
         return DEFAULT_ACTION;
 
-    struct tcphdr *tcp = data + sizeof(struct ethhdr) + sizeof(struct iphdr);
+    struct tcphdr *tcp_header = data + sizeof(struct ethhdr) + sizeof(struct iphdr);
     if (data + sizeof(struct ethhdr) + sizeof(struct iphdr) + sizeof(struct tcphdr) > data_end)
         return DEFAULT_ACTION;
 
-    u_int16_t flags = ntohs(tcp_flag_word(tcp)) & 0x00FF;
+    u_int16_t tcp_flags = ntohs(tcp_flag_word(tcp_header)) & 0x00FF;
 
     // Nmap Null scan (-sN): Does not set any bits (TCP flag header is 0)
-    if (flags == 0x00) {
+    if (tcp_flags == 0x00) {
         bpf_trace_printk("Nmap Null scan");
     }
 
     // Nmap FIN scan (-sF): Sets just the TCP FIN bit.
-    if (flags == TCP_FIN) {
+    if (tcp_flags == TCP_FIN) {
         bpf_trace_printk("Nmap FIN scan");
     }
 
     // Nmap Xmas scan (-sX): Sets the FIN, PSH, and URG flags, lighting the packet up like a Christmas tree.
-    if (flags == (TCP_FIN | TCP_PSH | TCP_URG)) {
+    if (tcp_flags == (TCP_FIN | TCP_PSH | TCP_URG)) {
         bpf_trace_printk("Nmap Xmas scan");
     }
 
-    u_int32_t tcp_header_len = tcp->doff * 4;
+    u_int32_t tcp_header_len = tcp_header->doff * 4;
     u_int32_t tcp_options_len = tcp_header_len - sizeof(struct tcphdr);
     // if (data + sizeof(struct ethhdr) + sizeof(struct iphdr) + sizeof(struct tcphdr) + tcp_options_len  > data_end)
     //     bpf_trace_printk("Error: options past end");
     //     return DEFAULT_ACTION;
 
-    void *options_start = data + sizeof(struct ethhdr) + sizeof(struct iphdr) + sizeof(struct tcphdr);
-    void * cursor = options_start;
+    void *tcp_options = data + sizeof(struct ethhdr) + sizeof(struct iphdr) + sizeof(struct tcphdr);
 
     if (tcp_options_len == 20) {
-        if (cursor + 20 > data_end) {
+        if (tcp_options + 20 > data_end) {
             return DEFAULT_ACTION;
         }
-        if ((*(u_int32_t *)(cursor)      == TCP_NMAP_T2_T6_PROBES_1) &&
-            (*(u_int32_t *)(cursor + 4)  == TCP_NMAP_T2_T6_PROBES_2) &&
-            (*(u_int32_t *)(cursor + 8)  == TCP_NMAP_T2_T6_PROBES_3) &&
-            (*(u_int32_t *)(cursor + 12) == TCP_NMAP_T2_T6_PROBES_4) &&
-            (*(u_int32_t *)(cursor + 16) == TCP_NMAP_T2_T6_PROBES_5) )
+        if ((*(u_int32_t *)(tcp_options)      == TCP_NMAP_T2_T6_PROBES_1) &&
+            (*(u_int32_t *)(tcp_options + 4)  == TCP_NMAP_T2_T6_PROBES_2) &&
+            (*(u_int32_t *)(tcp_options + 8)  == TCP_NMAP_T2_T6_PROBES_3) &&
+            (*(u_int32_t *)(tcp_options + 12) == TCP_NMAP_T2_T6_PROBES_4) &&
+            (*(u_int32_t *)(tcp_options + 16) == TCP_NMAP_T2_T6_PROBES_5) )
         {
             // Nmap T3 Scan (-sT -T3)
-            if ((flags == (TCP_SYN | TCP_FIN | TCP_PSH | TCP_URG)) &&
-                (ntohs(tcp->window) == 256) &&
-                ((ntohs(iph->frag_off) & IP_DF) == 0))
+            if ((tcp_flags == (TCP_SYN | TCP_FIN | TCP_PSH | TCP_URG)) &&
+                (ntohs(tcp_header->window) == 256) &&
+                ((ntohs(ip_header->frag_off) & IP_DF) == 0))
             {
                 bpf_trace_printk("Nmap T3 scan");
             }
         }
     }
     else if (tcp_options_len == 16) {
-        if (cursor + 16 > data_end) {
+        if (tcp_options + 16 > data_end) {
             return DEFAULT_ACTION;
         }
 
