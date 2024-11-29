@@ -39,6 +39,12 @@ Commands:
 ./ebpfooling portscan enable <INTERFACE>
 ```
 
+## Compiling the personalities/portscan
+```
+$ cd ebpfoolery/personalities
+$ make
+```
+
 # Installation
 ## Prerequsites
  - Ubuntu 22.04
