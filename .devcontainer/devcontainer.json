@@ -1,0 +1,40 @@
+{
+    "name": "eBPF Foolery Dev",
+    "dockerComposeFile": "../docker/docker-compose.yml",
+    "service": "ebpfoolery_dev",
+    "workspaceFolder": "/workspace",
+
+    // Use this environment variable if you need to bind mount your local source code into a new container.
+    "remoteEnv": {
+        "LOCAL_WORKSPACE_FOLDER": "${localWorkspaceFolder}",
+    },
+    "customizations": {
+        "vscode": {
+            // Set *default* container specific settings.json values on container create.
+            // "settings": {
+            //     "python.pythonPath": "/canaryenv3/bin/python",
+            //     "python.venvFolders": [
+            //         "/canaryenv3",
+            //         "/canaryenv311"
+            //     ]
+            // },
+
+            // Add the IDs of extensions you want installed when the container is created.
+            "extensions": [
+                "ms-azuretools.vscode-docker",
+                "njpwerner.autodocstring",
+                "streetsidesoftware.code-spell-checker",
+                "eamodio.gitlens",
+                "ms-python.vscode-pylance",
+                "ms-python.python",
+                "ms-python.pylint",
+                "oderwat.indent-rainbow"
+            ]
+        }
+    },
+
+    // "overrideCommand": true,
+    // "initializeCommand": "./docker/manage_containers -p refresh",
+    // "postCreateCommand": "/canaryenv3/bin/python /workspace/canary/console/make_user.py ${env:USER}@thinkst.com qqq admin",
+    // "postStartCommand": "/canaryenv3/bin/python /workspace/canary/migrations/pre_start.py && cd /workspace/canary/console/frontend && npm ci && NODE_OPTIONS=--max-old-space-size=8192 npm run build && rm -rf /dist && mv -f ../dist /"
+}
