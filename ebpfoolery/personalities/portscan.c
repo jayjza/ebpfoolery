@@ -31,6 +31,11 @@
 #define TCP_NMAP_T2_T6_PROBES_4 0x0000ffff
 #define TCP_NMAP_T2_T6_PROBES_5 0x02040000
 
+
+char honeydet_ssh[] SEC(".rodata") = "SSH-1111-OpenSSH_9.0";
+char honeydet_redis[] SEC(".rodata") = "[[,[[";
+
+
 static __always_inline unsigned short compare_payload(
     char *target, __u32 target_len,
     unsigned char *tcp_payload, __u32 tcp_payload_len,
@@ -128,13 +133,12 @@ int xdp_prog(struct xdp_md *ctx) {
 
     __u32 tcp_payload_len = data_end - (void *)tcp_payload;
 
-    char honeydet_ssh[] = "SSH-1111-OpenSSH_9.0";
+    
     __u32 honeydet_ssh_len = sizeof(honeydet_ssh) - 1; // Ignore nul char
     if (compare_payload(honeydet_ssh, honeydet_ssh_len, tcp_payload, tcp_payload_len, data_end)) {
         bpf_printk("Honeydet Scanner: cowrie");
     }
 
-    char honeydet_redis[] = "[[,[[";
     __u32 honeydet_redis_len = sizeof(honeydet_redis) - 1; // Ignore nul char
     if (compare_payload(honeydet_redis, honeydet_redis_len, tcp_payload, tcp_payload_len, data_end)) {
         bpf_printk("Honeydet Scanner: opencanary-redis");
