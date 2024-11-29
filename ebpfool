@@ -1,5 +1,6 @@
 #! /usr/bin/env python
 import click
+import subprocess
 
 GREEN = '\033[0;32m'
 RED   = '\033[0;31m'
@@ -20,14 +21,79 @@ bool_choices = [
     'No'
 ]
 
-from ebpfoolery import fool_ippers, AVAILABLE_PERSONALITIES
+AVAILABLE_PERSONALITIES = ['win2016', 'ps4', 'xbox1']
 
 def _validate_personality_exists(ctx, param, value):
-    print(value)
-    print('-----')
     if value in AVAILABLE_PERSONALITIES:
         return value
     raise click.BadParameter(f'Personality supplied, {value}, is not yet supported.')
+
+
+def _get_object_file(personality):
+    return f"./ebpfoolery/personalities/{personality}.o"
+
+
+@click.command()
+@click.argument('personality', callback=_validate_personality_exists)
+@click.argument('interface') # we could likely add a check that the interface exists
+def fool_ippers(personality, interface):
+    """Adds the ippers personality to the supplied network interface
+
+    Args:
+        personality (str): ippers personality.
+        interface (str): network interface
+    """
+    try:
+        output = subprocess.check_output(
+        ["ip", "link", "set", "dev", interface, "xdpgeneric",
+        "obj", _get_object_file(personality), "sec", "xdp"],
+        stderr=subprocess.STDOUT)
+    except subprocess.CalledProcessError as e:
+        click.echo("Oh no, something went wrong.")
+        click.echo(error(e))
+    else:
+        click.echo(success("Let the fooling begin"))
+
+@click.command()
+@click.argument('interface') # we could likely add a check that the interface exists
+def unfool_ippers(interface):
+    """Remove the already applied ippers foolery
+
+    Args:
+        interface (str): network interface
+    """
+    try:
+        output = subprocess.check_output(
+            ["ip", "link", "set", "dev", interface, "xdpgeneric", "off"])
+    except subprocess.CalledProcessError as e:
+        click.echo("Oh no, something went wrong.")
+        click.echo(error(e))
+    else:
+        click.echo(success("No more living in the shadows"))
+
+
+@click.command()
+@click.argument('interface') # we could likely add a check that the interface exists
+def we_fooling(interface):
+    """Checks whether we have already applied some ippers foolery
+
+    Args:
+        interface (str): network interface
+    """
+    output = subprocess.check_output(
+        ["ip", "link", "show", "dev", interface])
+    if b"xdpgeneric" in output:
+        click.echo(success("We all set. No one will know. We be fooling!"))
+    else:
+        click.echo(warning("No fooling happening yet"))
+
+
+@click.command()
+def available_ippers():
+    """Shows the supported ippers personalities
+    """
+    click.echo(" , ".join(AVAILABLE_PERSONALITIES))
+
 
 @click.group()
 def cli():
@@ -36,16 +102,10 @@ def cli():
     """
     pass
 
-@click.command()
-@click.argument('personality', callback=_validate_personality_exists)
-@click.argument('interface') # we could likely add a check that the interface exists
-def ippers(personality, interface):
-    """
-    Forges your machine into a weapon of deception
-    """
-    fool_ippers(personality, interface)
-
 
 if __name__ == '__main__':
-    cli.add_command(ippers)
+    cli.add_command(fool_ippers)
+    cli.add_command(unfool_ippers)
+    cli.add_command(we_fooling)
+    cli.add_command(available_ippers)
     cli()
