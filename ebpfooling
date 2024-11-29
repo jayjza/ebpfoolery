@@ -1,55 +1,162 @@
-#!/bin/bash
-DIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
+#! /usr/bin/env python3
+import click
+import subprocess
 
-function usage() {
-    echo 'ebpfooling -p <PERSONALITY> -i <NETWORK_INTERFACE>'
-    echo -e "\t<PERSONALITY>\t-\tIp personality you would like to fake"
-    echo -e "\t<NETWORK_INTERFACE>\t-\tNetwork interface you would like to use"
-    exit 1
-}
+GREEN = '\033[0;32m'
+RED   = '\033[0;31m'
+YELLOW = '\033[1;33m'
+END   = '\033[0m'
 
-function sudo() {
-  if [ "$EUID" -ne 0 ]; then
-    $(which sudo) $*
-  else
-    # Strip `sudo -E` before running the remaining command
-    ${*:2}
-  fi
-}
+def error(msg):
+    return f'{RED}{msg}{END}'
 
-PERSONALITY=""
-INTERFACE=""
-if [[ $# -lt 1 ]];then
-	usage
-else
-	while getopts "ap:i:" opt; do
-	  case $opt in
-        h)
-          usage
-          ;;
-        p)
-          PERSONALITY="$OPTARG"
-          ;;
-        i)
-          INTERFACE="$OPTARG"
-          ;;
-	    \?)
-	      echo "Invalid option: -$OPTARG" >&2
-          usage
-	      ;;
-	  esac
-	done
-fi
+def success(msg):
+    return f'{GREEN}{msg}{END}'
 
-if [[ "a$PERSONALITY" == "a" || "a$INTERFACE" == "a" ]]; then
-  echo "Please supply both a personality and a network interface"
-  usage
-fi
+def warning(msg):
+    return f'{YELLOW}{msg}{END}'
 
-PYTHON3=python3
-if [[ "$VIRTUAL_ENV" != "" ]]; then
-  PYTHON3=$VIRTUAL_ENV/bin/python3
-else
-  echo "We detected you are not in a virtual environment. Using system python3."
-fi
-sudo $PYTHON3 ebpfool ippers "$PERSONALITY" "$INTERFACE"
+bool_choices = [
+    'Yes',
+    'No'
+]
+
+AVAILABLE_PERSONALITIES = ['win2016', 'ps4', 'xbox1']
+
+def _validate_personality_exists(ctx, param, value):
+    if value in AVAILABLE_PERSONALITIES:
+        return value
+    raise click.BadParameter(f'Personality supplied, {value}, is not yet supported.')
+
+
+def _get_object_file(personality):
+    return f"./ebpfoolery/personalities/{personality}.o"
+
+
+@click.command("enable")
+@click.argument('personality', callback=_validate_personality_exists)
+@click.argument('interface') # we could likely add a check that the interface exists
+def enable_ippers(personality, interface):
+    """Adds the ippers personality to the supplied network interface
+
+    Args:
+        personality (str): ippers personality.
+        interface (str): network interface
+    """
+    try:
+        output = subprocess.check_output(
+        ["ip", "link", "set", "dev", interface, "xdpgeneric",
+        "obj", _get_object_file(personality), "sec", "xdp"],
+        stderr=subprocess.STDOUT)
+    except subprocess.CalledProcessError as e:
+        click.echo("Oh no, something went wrong.")
+        click.echo(error(e))
+    else:
+        click.echo(success("Let the fooling begin"))
+
+@click.command("disable")
+@click.argument('interface') # we could likely add a check that the interface exists
+def disable_ippers(interface):
+    """Remove the already applied ippers foolery
+
+    Args:
+        interface (str): network interface
+    """
+    try:
+        output = subprocess.check_output(
+            ["ip", "link", "set", "dev", interface, "xdpgeneric", "off"])
+    except subprocess.CalledProcessError as e:
+        click.echo("Oh no, something went wrong.")
+        click.echo(error(e))
+    else:
+        click.echo(success("No more living in the shadows"))
+
+
+@click.command("check")
+@click.argument('interface') # we could likely add a check that the interface exists
+def we_fooling(interface):
+    """Checks whether we have already applied some ippers foolery
+
+    Args:
+        interface (str): network interface
+    """
+    output = subprocess.check_output(
+        ["ip", "link", "show", "dev", interface])
+    if b"xdpgeneric" in output:
+        click.echo(success("We all set. No one will know. We be fooling!"))
+    else:
+        click.echo(warning("No fooling happening yet"))
+
+
+@click.command("available")
+def available_ippers():
+    """Shows the supported ippers personalities
+    """
+    click.echo(" , ".join(AVAILABLE_PERSONALITIES))
+
+
+@click.command("enable")
+@click.argument('interface')
+def enable_portscan(interface):
+    """Enables the portscan functionality
+
+    Args:
+        interface (str): network interface
+    """
+    try:
+        output = subprocess.check_output(
+        ["ip", "link", "set", "dev", interface, "xdpgeneric",
+        "obj", _get_object_file('portscan'), "sec", "xdp"],
+        stderr=subprocess.STDOUT)
+    except subprocess.CalledProcessError as e:
+        click.echo("Oh no, something went wrong.")
+        click.echo(error(e))
+    else:
+        click.echo(success("Let the fooling begin"))
+
+@click.command("disable")
+@click.argument('interface')
+def disable_portscan(interface):
+    """Disables the portscan functionality
+
+    Args:
+        interface (str): network interface
+    """
+    try:
+        output = subprocess.check_output(
+            ["ip", "link", "set", "dev", interface, "xdpgeneric", "off"])
+    except subprocess.CalledProcessError as e:
+        click.echo("Oh no, something went wrong.")
+        click.echo(error(e))
+    else:
+        click.echo(success("No more living in the shadows"))
+
+
+@click.group()
+def cli():
+    """
+    Welcome to some Tom eBPFoolery
+    """
+    pass
+
+@cli.group()
+def portscan():
+    """Manage portscan functionality
+    """
+    pass
+
+@cli.group()
+def ippers():
+    """Manage ippers functionality
+    """
+    pass
+
+
+if __name__ == '__main__':
+    ippers.add_command(enable_ippers)
+    ippers.add_command(disable_ippers)
+    ippers.add_command(we_fooling)
+    ippers.add_command(available_ippers)
+    portscan.add_command(enable_portscan)
+    portscan.add_command(disable_portscan)
+    cli()
