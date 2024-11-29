@@ -36,27 +36,20 @@ sudo apt-get upgrade
 There is a number of pre-requisites that must be installed for the development:
 
 ```
-sudo apt install -y zip bison build-essential cmake flex git libedit-dev \
-  libllvm14 llvm-14-dev libclang-14-dev python3 zlib1g-dev libelf-dev libfl-dev python3-setuptools \
-  liblzma-dev libdebuginfod-dev arping netperf iperf nmap
+sudo apt install -y zip iproute2 libbpf-dev llvm clang gh zip bison \
+    build-essential cmake flex git libedit-dev \
+    libllvm14 llvm-14-dev libclang-14-dev  zlib1g-dev libelf-dev libfl-dev \
+    liblzma-dev libdebuginfod-dev arping netperf iperf nmap python3.10 \
+    python3.10-venv python3.10-dev
 ```
 
-## Installing & Compiling bcc
-[ https://github.com/iovisor/bcc/blob/master/INSTALL.md#install-build-dependencies-1 ]
-```
-git clone https://github.com/iovisor/bcc.git
-mkdir bcc/build; cd bcc/build
-cmake ..
-make
-sudo make install
-cmake -DPYTHON_CMD=python3 .. # build python3 binding
-pushd src/python/
-make
-sudo make install
-popd
-```
+## Development Using Docker
+This project has a dev container that uses a custom docker image which has everything there for you.
+1. Simply open the project in vs-code
+2. Allow vs-code to "Reopen in a container"
+3. Have fun!
 
-## Development
+## Development Using Python Poetry
 This project uses Python Poetry.
 [ https://python-poetry.org/docs/master/#installing-with-the-official-installer ]
 Install Python Poetry using:
@@ -88,60 +81,3 @@ If you would like to run the program using the virtualenv, but not in the shell,
 ```
 poetry run python3 ...
 ```
-
-
-# Potential Issues:
-
-1. Missing BCC after above steps still
-
-Problem: In poetry env, you may not be able to access BCC and get the error:
-```
-(eBPFooling-py3.10) ➜  eBPFooling git:(main) ./ebpfooling -p win2016 -i ens160
-Traceback (most recent call last):
-  File "/home/ubuntu/eBPFooling/ebpfooling", line 23, in <module>
-    from eBPFooling import fool_ippers, AVAILABLE_PERSONALITIES
-  File "/home/ubuntu/eBPFooling/eBPFooling/__init__.py", line 1, in <module>
-    from bcc import BPF
-ModuleNotFoundError: No module named 'bcc'
-```
-
-Solution:
-In your venv: `poetry config virtualenvs.options.system-site-packages true`
-Using system working python3:
-```
-➜  eBPFooling git:(main) ✗ python3 -m site
-sys.path = [
-    '/home/j/eBPFooling',
-    '/usr/lib/python310.zip',
-    '/usr/lib/python3.10',
-    '/usr/lib/python3.10/lib-dynload',
-    '/usr/local/lib/python3.10/dist-packages',
-    '/usr/lib/python3/dist-packages',
-    '/usr/lib/python3/dist-packages/bcc-0.28.0+003b0037-py3.10.egg',
-]
-```
-Notice the `bcc-*.egg`.
-
-In your venv, run the same to see the difference:
-```
-(eBPFooling-py3.10) ➜  eBPFooling git:(main) ✗ python -m site
-sys.path = [
-    '/home/j/eBPFooling',
-    '/usr/lib/python310.zip',
-    '/usr/lib/python3.10',
-    '/usr/lib/python3.10/lib-dynload',
-    '/home/j/.cache/pypoetry/virtualenvs/eBPFooling-iDpkqNNH-py3.10/lib/python3.10/site-packages',
-]
-```
-
-We can take it further check using:
-```
-(eBPFooling-py3.10) ➜  eBPFooling git:(main) python3 -c "import bcc as _; print(_.__file__)"
-Traceback (most recent call last):
-  File "<string>", line 1, in <module>
-ModuleNotFoundError: No module named 'bcc'
-(eBPFooling-py3.10) ➜  eBPFooling git:(main) exit
-➜  eBPFooling git:(main) python3 -c "import bcc as _; print(_.__file__)"
-/usr/lib/python3/dist-packages/bcc-0.28.0+bc9b43a0-py3.10.egg/bcc/__init__.py
-```
-Notice how the system find the files and displays its location

@@ -10,7 +10,12 @@
     },
     "customizations": {
         "vscode": {
-
+            "settings": {
+                "python.pythonPath": "/pythonenv3/bin/python",
+                "python.venvFolders": [
+                    "/pythonenv3/bin/python"
+                ]
+            },
             // Add the IDs of extensions you want installed when the container is created.
             "extensions": [
                 "ms-azuretools.vscode-docker",
