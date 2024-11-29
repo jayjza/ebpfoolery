@@ -33,8 +33,15 @@
 
 
 char honeydet_ssh[] SEC(".rodata") = "SSH-1111-OpenSSH_9.0";
+char honeydet_mongodb[] SEC(".rodata") = {
+    0x3b, 0x00, 0x00, 0x00, 0x3c, 0x30, 0x00, 0x00, 0xff, 0xff,
+    0xff, 0xff, 0xd4, 0x07, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x61, 0x64, 0x6d, 0x69, 0x6e, 0x2e, 0x24, 0x63, 0x6d, 0x64,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0xff, 0xff, 0xff, 0xff, 0x14,
+    0x00, 0x00, 0x00, 0x10, 0x62, 0x75, 0x69, 0x6c, 0x64, 0x69,
+    0x6e, 0x66, 0x6f, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00
+};
 char honeydet_redis[] SEC(".rodata") = "[[,[[";
-
 
 static __always_inline unsigned short compare_payload(
     char *target, __u32 target_len,
@@ -50,7 +57,9 @@ static __always_inline unsigned short compare_payload(
     }
 
     for (int i = 0; i < target_len; i++) {
-        if (tcp_payload[i] != target[i])
+        // bpf_printk("target[%d] %x", i, (target[i] & 0x000000ff));
+        // bpf_printk("tcp_payload[%d] %x", i, tcp_payload[i]);
+        if (tcp_payload[i] != (target[i] & 0x000000ff))
             return 0;
     }
 
@@ -133,13 +142,17 @@ int xdp_prog(struct xdp_md *ctx) {
 
     __u32 tcp_payload_len = data_end - (void *)tcp_payload;
 
-    
-    __u32 honeydet_ssh_len = sizeof(honeydet_ssh) - 1; // Ignore nul char
+    __u32 honeydet_ssh_len = sizeof(honeydet_ssh) - 1; // Ignore null char
     if (compare_payload(honeydet_ssh, honeydet_ssh_len, tcp_payload, tcp_payload_len, data_end)) {
         bpf_printk("Honeydet Scanner: cowrie");
     }
 
-    __u32 honeydet_redis_len = sizeof(honeydet_redis) - 1; // Ignore nul char
+    __u32 honeydet_mongodb_len = sizeof(honeydet_mongodb);
+    if (compare_payload(honeydet_mongodb, honeydet_mongodb_len, tcp_payload, tcp_payload_len, data_end)) {
+        bpf_printk("Honeydet Scanner: dionaea-mongodb");
+    }
+
+    __u32 honeydet_redis_len = sizeof(honeydet_redis) - 1; // Ignore null char
     if (compare_payload(honeydet_redis, honeydet_redis_len, tcp_payload, tcp_payload_len, data_end)) {
         bpf_printk("Honeydet Scanner: opencanary-redis");
     }
