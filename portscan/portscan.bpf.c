@@ -38,8 +38,6 @@ static __always_inline unsigned short compare_payload(
         return 0;
     }
 
-    bpf_trace_printk("tcp_payload_len %d", tcp_payload_len);
-    bpf_trace_printk("target_len %d", target_len);
     for (int i = 0; i < target_len; i++) {
         if (tcp_payload[i] != target[i])
             return 0;
