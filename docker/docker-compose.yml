@@ -1,0 +1,15 @@
+services:
+  ebpfoolery_dev:
+    container_name: ebpfoolery_dev
+    restart: always
+    build: .
+    pull_policy: build
+    image: ebpfoolery_dev
+    volumes:
+    - ../:/workspace
+    cap_add:
+      - NET_ADMIN
+      - SYS_ADMIN
+    stdin_open: true # docker run -i
+    tty: true        # docker run -t
+    command: "/bin/bash"
