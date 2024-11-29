@@ -25,6 +25,29 @@
 #define TCP_NMAP_T2_T6_PROBES_4 0x0000ffff
 #define TCP_NMAP_T2_T6_PROBES_5 0x02040000
 
+static __always_inline unsigned short compare_payload(
+    char *target, u_int32_t target_len,
+    unsigned char *tcp_payload, u_int32_t tcp_payload_len,
+    void *data_end)
+{
+    if (tcp_payload_len < target_len) {
+        return 0;
+    }
+
+    if (((void *)tcp_payload + target_len) > data_end) {
+        return 0;
+    }
+
+    bpf_trace_printk("tcp_payload_len %d", tcp_payload_len);
+    bpf_trace_printk("target_len %d", target_len);
+    for (int i = 0; i < target_len; i++) {
+        if (tcp_payload[i] != target[i])
+            return 0;
+    }
+
+    return 1;
+}
+
 int xdp(struct xdp_md *ctx) {
     void *data = (void *)(long)ctx->data;
     void *data_end = (void *)(long)ctx->data_end;
@@ -93,11 +116,23 @@ int xdp(struct xdp_md *ctx) {
             }
         }
     }
-    else if (tcp_options_len == 16) {
-        if (tcp_options + 16 > data_end) {
-            return DEFAULT_ACTION;
-        }
 
+    unsigned char *tcp_payload = (void *)tcp_header + tcp_header_len;
+    if ((void *)tcp_payload > data_end)
+            return DEFAULT_ACTION;
+
+    u_int32_t tcp_payload_len = data_end - (void *)tcp_payload;
+
+    char honeydet_ssh[] = "SSH-1111-OpenSSH_9.0";
+    u_int32_t honeydet_ssh_len = sizeof(honeydet_ssh) - 1; // Ignore nul char
+    if (compare_payload(honeydet_ssh, honeydet_ssh_len, tcp_payload, tcp_payload_len, data_end)) {
+        bpf_trace_printk("Honeydet Scanner: cowrie");
+    }
+
+    char honeydet_redis[] = "[[,[[";
+    u_int32_t honeydet_redis_len = sizeof(honeydet_redis) - 1; // Ignore nul char
+    if (compare_payload(honeydet_redis, honeydet_redis_len, tcp_payload, tcp_payload_len, data_end)) {
+        bpf_trace_printk("Honeydet Scanner: opencanary-redis");
     }
 
     return DEFAULT_ACTION;
