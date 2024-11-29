@@ -66,14 +66,16 @@ int xdp(struct xdp_md *ctx) {
 
     u_int32_t tcp_header_len = tcp_header->doff * 4;
     u_int32_t tcp_options_len = tcp_header_len - sizeof(struct tcphdr);
-    // if (data + sizeof(struct ethhdr) + sizeof(struct iphdr) + sizeof(struct tcphdr) + tcp_options_len  > data_end)
-    //     bpf_trace_printk("Error: options past end");
-    //     return DEFAULT_ACTION;
 
     void *tcp_options = data + sizeof(struct ethhdr) + sizeof(struct iphdr) + sizeof(struct tcphdr);
+    if (tcp_options > data_end)
+        return DEFAULT_ACTION;
 
+    // Nmap T3 prove has an tcp options length of 20
     if (tcp_options_len == 20) {
-        if (tcp_options + 20 > data_end) {
+        // bpf_trace_printk("tcp_options_len is 20");
+        if ((tcp_options + 20) > data_end) {
+            // bpf_trace_printk("tcp_options_len too long");
             return DEFAULT_ACTION;
         }
         if ((*(u_int32_t *)(tcp_options)      == TCP_NMAP_T2_T6_PROBES_1) &&
