@@ -33,10 +33,10 @@ def _get_object_file(personality):
     return f"./ebpfoolery/personalities/{personality}.o"
 
 
-@click.command()
+@click.command("enable")
 @click.argument('personality', callback=_validate_personality_exists)
 @click.argument('interface') # we could likely add a check that the interface exists
-def fool_ippers(personality, interface):
+def enable_ippers(personality, interface):
     """Adds the ippers personality to the supplied network interface
 
     Args:
@@ -54,9 +54,9 @@ def fool_ippers(personality, interface):
     else:
         click.echo(success("Let the fooling begin"))
 
-@click.command()
+@click.command("disable")
 @click.argument('interface') # we could likely add a check that the interface exists
-def unfool_ippers(interface):
+def disable_ippers(interface):
     """Remove the already applied ippers foolery
 
     Args:
@@ -72,7 +72,7 @@ def unfool_ippers(interface):
         click.echo(success("No more living in the shadows"))
 
 
-@click.command()
+@click.command("check")
 @click.argument('interface') # we could likely add a check that the interface exists
 def we_fooling(interface):
     """Checks whether we have already applied some ippers foolery
@@ -88,11 +88,48 @@ def we_fooling(interface):
         click.echo(warning("No fooling happening yet"))
 
 
-@click.command()
+@click.command("available")
 def available_ippers():
     """Shows the supported ippers personalities
     """
     click.echo(" , ".join(AVAILABLE_PERSONALITIES))
+
+
+@click.command("enable")
+@click.argument('interface')
+def enable_portscan(interface):
+    """Enables the portscan functionality
+
+    Args:
+        interface (str): network interface
+    """
+    try:
+        output = subprocess.check_output(
+        ["ip", "link", "set", "dev", interface, "xdpgeneric",
+        "obj", _get_object_file('portscan'), "sec", "xdp"],
+        stderr=subprocess.STDOUT)
+    except subprocess.CalledProcessError as e:
+        click.echo("Oh no, something went wrong.")
+        click.echo(error(e))
+    else:
+        click.echo(success("Let the fooling begin"))
+
+@click.command("disable")
+@click.argument('interface')
+def disable_portscan(interface):
+    """Disables the portscan functionality
+
+    Args:
+        interface (str): network interface
+    """
+    try:
+        output = subprocess.check_output(
+            ["ip", "link", "set", "dev", interface, "xdpgeneric", "off"])
+    except subprocess.CalledProcessError as e:
+        click.echo("Oh no, something went wrong.")
+        click.echo(error(e))
+    else:
+        click.echo(success("No more living in the shadows"))
 
 
 @click.group()
@@ -102,10 +139,24 @@ def cli():
     """
     pass
 
+@cli.group()
+def portscan():
+    """Manage portscan functionality
+    """
+    pass
+
+@cli.group()
+def ippers():
+    """Manage ippers functionality
+    """
+    pass
+
 
 if __name__ == '__main__':
-    cli.add_command(fool_ippers)
-    cli.add_command(unfool_ippers)
-    cli.add_command(we_fooling)
-    cli.add_command(available_ippers)
+    ippers.add_command(enable_ippers)
+    ippers.add_command(disable_ippers)
+    ippers.add_command(we_fooling)
+    ippers.add_command(available_ippers)
+    portscan.add_command(enable_portscan)
+    portscan.add_command(disable_portscan)
     cli()
