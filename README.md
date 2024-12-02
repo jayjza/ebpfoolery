@@ -28,15 +28,18 @@ Commands:
 ```
 ./ebpfooling ippers available
 ```
+NOTE: Currently both portscan and ippers dont work well together.
 
-## Enabling Ippers
+## Managing Ippers
 ```
 ./ebpfooling ippers enable <PERSONALITY> <INTERFACE>
+or
+./ebpfooling ippers disable <INTERFACE>
 ```
 
-## Enabling Portscan
+## Managing Portscan
 ```
-./ebpfooling portscan enable <INTERFACE>
+./ebpfooling portscan enable|disable <INTERFACE>
 ```
 
 ## Compiling the personalities/portscan
